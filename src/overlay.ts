@@ -70,7 +70,7 @@ void listen<ReminderAlert>("reminder-alert", (event) => {
   requestAnimationFrame(() => reminder.classList.add("active"));
   window.clearTimeout(dismissTimer);
   // Two lines of text need longer than a glance to read.
-  dismissTimer = window.setTimeout(() => void dismiss(), alert.fact ? 15000 : 6000);
+  dismissTimer = window.setTimeout(() => void dismiss(), alert.fact ? 20000 : 6000);
 });
 
 document.addEventListener("click", () => void dismiss());
