@@ -40,6 +40,7 @@ The project pins Rust `1.96.0` because some Windows systems with Smart App Contr
 - Settings and active timer state persist to a local `state.json` file.
 - Native session notifications and optional launch-at-login use official Tauri plugins.
 - Optional full-screen reminders provide a brief screen flash, centered session message, and independently configurable alert sound.
+- Full-screen reminders can show a short bilingual (Vietnamese/English) health fact with an emoji; on by default and can be turned off in Settings.
 - Start-minimized-to-tray is configurable.
 
 On Windows, notification identity is correct for an installed build. During `tauri dev`, Windows may attribute development notifications to PowerShell.

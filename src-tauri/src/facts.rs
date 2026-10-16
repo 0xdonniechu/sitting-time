@@ -18,7 +18,7 @@ const fn fact(emoji: &'static str, vi: &'static str, en: &'static str) -> Health
 
 pub const FACTS: &[HealthFact] = &[
     // Sitting and movement
-    fact("🪑", "Ngồi liên tục nhiều giờ mỗi ngày liên quan đến tăng nguy cơ bệnh tim mạch và tiểu đường type 2.", "Sitting for many hours a day is linked to a higher risk of heart disease and type 2 diabetes."),
+    fact("🪑", "Ngồi liên tục nhiều giờ mỗi ngày liên quan đến tăng nguy cơ bệnh tim mạch và tiểu đường tuýp 2.", "Sitting for many hours a day is linked to a higher risk of heart disease and type 2 diabetes."),
     fact("🚶", "Đứng dậy đi lại vài phút mỗi 30–60 phút giúp cải thiện đường huyết sau bữa ăn.", "Getting up to walk for a few minutes every 30–60 minutes helps improve blood sugar after meals."),
     fact("🏃", "WHO khuyến nghị người lớn vận động cường độ vừa ít nhất 150 phút mỗi tuần.", "WHO recommends adults get at least 150 minutes of moderate activity a week."),
     fact("💪", "Tập sức mạnh ít nhất 2 buổi mỗi tuần giúp giữ khối cơ và xương chắc khỏe.", "Strength training at least twice a week helps keep your muscles and bones strong."),
@@ -26,7 +26,7 @@ pub const FACTS: &[HealthFact] = &[
     fact("🪜", "Leo cầu thang là cách đơn giản để tăng nhịp tim trong ngày.", "Taking the stairs is an easy way to raise your heart rate during the day."),
     fact("😊", "Vận động thể chất giúp cải thiện tâm trạng và giảm cảm giác lo âu.", "Physical activity helps lift your mood and ease feelings of anxiety."),
     fact("🦵", "Ngồi lâu làm máu ở chân lưu thông chậm; co duỗi bắp chân giúp máu về tim tốt hơn.", "Long sitting slows blood flow in your legs; flexing your calves helps it return to the heart."),
-    fact("✨", "WHO nói vận động một chút vẫn tốt hơn không vận động gì.", "WHO says some physical activity is better than none."),
+    fact("✨", "WHO cho rằng vận động một chút vẫn tốt hơn không vận động gì.", "WHO says some physical activity is better than none."),
     fact("🌙", "Vận động đều đặn giúp dễ vào giấc và ngủ sâu hơn.", "Regular exercise helps you fall asleep faster and sleep more deeply."),
     fact("❤️", "Vận động thường xuyên giúp hạ huyết áp và tăng sức khỏe tim mạch.", "Regular activity helps lower blood pressure and strengthens your heart."),
     fact("🦴", "Đi bộ, leo cầu thang và các bài chịu trọng lượng cơ thể giúp xương chắc hơn.", "Walking, stair climbing and other weight-bearing exercise help build stronger bones."),
@@ -60,7 +60,7 @@ pub const FACTS: &[HealthFact] = &[
     fact("🥛", "Uống nước rải đều trong ngày tốt hơn đợi khát rồi uống thật nhiều một lần.", "Sipping water through the day is better than waiting until you're thirsty and gulping a lot."),
     fact("🍉", "Khoảng 20% lượng nước mỗi ngày đến từ thức ăn như rau và trái cây.", "About 20% of your daily water comes from food such as fruit and vegetables."),
     fact("🌅", "Một ly nước sau khi ngủ dậy giúp bù lượng nước mất qua hơi thở và mồ hôi ban đêm.", "A glass of water after waking replaces fluid lost through breath and sweat overnight."),
-    fact("🫗", "Nước lọc là lựa chọn tốt nhất; đồ uống có đường thêm calo mà không làm no.", "Plain water is the best choice; sugary drinks add calories without filling you up."),
+    fact("💦", "Nước lọc là lựa chọn tốt nhất; đồ uống có đường thêm calo mà không làm no.", "Plain water is the best choice; sugary drinks add calories without filling you up."),
     fact("🥵", "Khi vận động hoặc trời nóng, cơ thể cần nhiều nước hơn bình thường.", "You need more water than usual when exercising or in hot weather."),
     fact("🍶", "Để sẵn bình nước trên bàn giúp bạn nhớ uống nước thường xuyên hơn.", "Keeping a water bottle on your desk reminds you to drink more often."),
     fact("☕", "Cà phê và trà uống ở mức vừa phải cũng được tính vào lượng nước mỗi ngày.", "Coffee and tea in moderation also count toward your daily fluids."),
@@ -86,7 +86,7 @@ pub const FACTS: &[HealthFact] = &[
     fact("🍎", "Ăn trái cây nguyên quả tốt hơn uống nước ép vì giữ được chất xơ.", "Whole fruit is better than juice because it keeps the fiber."),
     fact("🌱", "Các loại đậu là nguồn đạm thực vật rẻ và giàu chất xơ.", "Beans and lentils are a cheap source of plant protein and fiber."),
     fact("🥗", "Hãy để rau và trái cây chiếm khoảng một nửa đĩa ăn.", "Aim to fill about half your plate with vegetables and fruit."),
-    fact("🥚", "Trứng là nguồn đạm chất lượng cao và dễ chế biến.", "Eggs are an affordable, high-quality source of protein."),
+    fact("🥚", "Trứng là nguồn đạm chất lượng cao với giá phải chăng.", "Eggs are an affordable, high-quality source of protein."),
     // Eating habits
     fact("🐢", "Ăn chậm giúp não có thời gian nhận tín hiệu no, nên ít khi ăn quá nhiều.", "Eating slowly gives your brain time to register fullness, so you're less likely to overeat."),
     fact("📺", "Vừa ăn vừa xem màn hình dễ khiến ta ăn nhiều hơn mà không để ý.", "Eating in front of a screen makes it easy to eat more without noticing."),
