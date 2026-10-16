@@ -1,6 +1,11 @@
 use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
 
+pub const MIN_DURATION_MINUTES: u64 = 1;
+pub const MAX_DURATION_MINUTES: u64 = 240;
+pub const MIN_SESSIONS_BEFORE_LONG_BREAK: u32 = 1;
+pub const MAX_SESSIONS_BEFORE_LONG_BREAK: u32 = 12;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum TimerMode {
@@ -26,7 +31,7 @@ pub enum TimerStatus {
     Paused,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TimerSettings {
     pub sitting_seconds: u64,
@@ -35,6 +40,23 @@ pub struct TimerSettings {
     pub short_break_seconds: u64,
     pub long_break_seconds: u64,
     pub focus_sessions_before_long_break: u32,
+}
+
+impl TimerSettings {
+    pub fn is_valid(&self) -> bool {
+        let durations = (MIN_DURATION_MINUTES * 60)..=(MAX_DURATION_MINUTES * 60);
+        [
+            self.sitting_seconds,
+            self.movement_seconds,
+            self.focus_seconds,
+            self.short_break_seconds,
+            self.long_break_seconds,
+        ]
+        .iter()
+        .all(|seconds| durations.contains(seconds))
+            && (MIN_SESSIONS_BEFORE_LONG_BREAK..=MAX_SESSIONS_BEFORE_LONG_BREAK)
+                .contains(&self.focus_sessions_before_long_break)
+    }
 }
 
 impl Default for TimerSettings {
@@ -96,7 +118,20 @@ impl TimerEngine {
     }
 
     pub fn update_settings(&mut self, settings: TimerSettings) {
+        if self.settings == settings {
+            return;
+        }
         self.settings = settings;
+        self.reset_current_session();
+    }
+
+    /// Restored state is untrusted: invalid durations could make `tick` loop forever.
+    pub fn sanitize(&mut self) {
+        if self.settings.is_valid() {
+            return;
+        }
+        self.settings = TimerSettings::default();
+        self.completed_focus_sessions = 0;
         self.reset_current_session();
     }
 
@@ -189,7 +224,10 @@ impl TimerEngine {
             (TimerMode::StandUp, SessionKind::Move) => SessionKind::Sitting,
             (TimerMode::Pomodoro, SessionKind::Focus) => {
                 self.completed_focus_sessions = self.completed_focus_sessions.saturating_add(1);
-                if self.completed_focus_sessions % self.settings.focus_sessions_before_long_break == 0 {
+                if self
+                    .completed_focus_sessions
+                    .is_multiple_of(self.settings.focus_sessions_before_long_break)
+                {
                     SessionKind::LongBreak
                 } else {
                     SessionKind::ShortBreak
@@ -252,6 +290,92 @@ mod tests {
         assert_eq!(snapshot.session, SessionKind::Focus);
         assert_eq!(snapshot.remaining_seconds, 25 * 60);
         assert_eq!(snapshot.status, TimerStatus::Idle);
+    }
+
+    fn running_engine(mode: TimerMode) -> TimerEngine {
+        let mut engine = TimerEngine::default();
+        engine.set_mode(mode);
+        engine.start();
+        engine
+    }
+
+    #[test]
+    fn unchanged_settings_keep_running_session() {
+        let mut engine = running_engine(TimerMode::StandUp);
+        let deadline = engine.deadline_epoch_ms;
+        engine.update_settings(TimerSettings::default());
+        assert_eq!(engine.status, TimerStatus::Running);
+        assert_eq!(engine.deadline_epoch_ms, deadline);
+    }
+
+    #[test]
+    fn changed_settings_reset_session() {
+        let mut engine = running_engine(TimerMode::StandUp);
+        let settings = TimerSettings {
+            sitting_seconds: 30 * 60,
+            ..TimerSettings::default()
+        };
+        engine.update_settings(settings);
+        let snapshot = engine.snapshot();
+        assert_eq!(snapshot.status, TimerStatus::Idle);
+        assert_eq!(snapshot.remaining_seconds, 30 * 60);
+    }
+
+    #[test]
+    fn tick_catches_up_from_deadline_after_sleep() {
+        let mut engine = running_engine(TimerMode::StandUp);
+        let missed_deadline = epoch_ms() - 60_000;
+        engine.deadline_epoch_ms = Some(missed_deadline);
+        assert!(engine.tick());
+        assert_eq!(engine.session, SessionKind::Move);
+        assert_eq!(engine.status, TimerStatus::Running);
+        assert_eq!(engine.deadline_epoch_ms, Some(missed_deadline + 5 * 60 * 1_000));
+    }
+
+    #[test]
+    fn fourth_focus_session_leads_to_long_break() {
+        let mut engine = TimerEngine::default();
+        let mut breaks = Vec::new();
+        for _ in 0..4 {
+            engine.skip();
+            breaks.push(engine.session);
+            engine.skip();
+        }
+        assert_eq!(
+            breaks,
+            [
+                SessionKind::ShortBreak,
+                SessionKind::ShortBreak,
+                SessionKind::ShortBreak,
+                SessionKind::LongBreak
+            ]
+        );
+    }
+
+    #[test]
+    fn sanitize_replaces_invalid_restored_settings() {
+        let mut engine = running_engine(TimerMode::StandUp);
+        engine.settings = TimerSettings {
+            sitting_seconds: 0,
+            movement_seconds: 0,
+            focus_sessions_before_long_break: 0,
+            ..TimerSettings::default()
+        };
+        engine.deadline_epoch_ms = Some(epoch_ms() - 60_000);
+        engine.sanitize();
+        assert_eq!(engine.settings, TimerSettings::default());
+        assert_eq!(engine.status, TimerStatus::Idle);
+        assert!(!engine.tick());
+        assert_eq!(engine.snapshot().remaining_seconds, 45 * 60);
+    }
+
+    #[test]
+    fn sanitize_keeps_valid_running_state() {
+        let mut engine = running_engine(TimerMode::Pomodoro);
+        let deadline = engine.deadline_epoch_ms;
+        engine.sanitize();
+        assert_eq!(engine.status, TimerStatus::Running);
+        assert_eq!(engine.deadline_epoch_ms, deadline);
     }
 
     #[test]

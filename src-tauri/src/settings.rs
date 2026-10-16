@@ -1,4 +1,7 @@
-use crate::timer::{TimerEngine, TimerSettings};
+use crate::timer::{
+    TimerEngine, TimerSettings, MAX_DURATION_MINUTES, MAX_SESSIONS_BEFORE_LONG_BREAK,
+    MIN_DURATION_MINUTES, MIN_SESSIONS_BEFORE_LONG_BREAK,
+};
 use serde::{Deserialize, Serialize};
 use std::{fs, path::Path};
 
@@ -49,11 +52,17 @@ impl SettingsPayload {
             self.short_break_minutes,
             self.long_break_minutes,
         ];
-        if durations.iter().any(|minutes| !(1..=240).contains(minutes)) {
-            return Err("Durations must be between 1 and 240 minutes".to_string());
+        let range = MIN_DURATION_MINUTES..=MAX_DURATION_MINUTES;
+        if durations.iter().any(|minutes| !range.contains(minutes)) {
+            return Err(format!(
+                "Durations must be between {MIN_DURATION_MINUTES} and {MAX_DURATION_MINUTES} minutes"
+            ));
         }
-        if !(1..=12).contains(&self.focus_sessions_before_long_break) {
-            return Err("Long-break cycle must be between 1 and 12 sessions".to_string());
+        let cycle = MIN_SESSIONS_BEFORE_LONG_BREAK..=MAX_SESSIONS_BEFORE_LONG_BREAK;
+        if !cycle.contains(&self.focus_sessions_before_long_break) {
+            return Err(format!(
+                "Long-break cycle must be between {MIN_SESSIONS_BEFORE_LONG_BREAK} and {MAX_SESSIONS_BEFORE_LONG_BREAK} sessions"
+            ));
         }
         Ok(())
     }
@@ -104,11 +113,18 @@ pub struct PersistedAppState {
     pub general: GeneralSettings,
 }
 
+/// Loads saved state. A file that exists but cannot be parsed is copied to
+/// `state.json.corrupt` first, so the next save does not destroy the only copy.
 pub fn load(path: &Path) -> PersistedAppState {
-    fs::read_to_string(path)
-        .ok()
-        .and_then(|contents| serde_json::from_str(&contents).ok())
-        .unwrap_or_default()
+    let mut state = match fs::read_to_string(path) {
+        Ok(contents) => serde_json::from_str(&contents).unwrap_or_else(|_| {
+            let _ = fs::copy(path, path.with_extension("json.corrupt"));
+            PersistedAppState::default()
+        }),
+        Err(_) => PersistedAppState::default(),
+    };
+    state.timer.sanitize();
+    state
 }
 
 pub fn save(path: &Path, timer: &TimerEngine, general: &GeneralSettings) -> Result<(), String> {
@@ -120,5 +136,59 @@ pub fn save(path: &Path, timer: &TimerEngine, general: &GeneralSettings) -> Resu
         general: general.clone(),
     };
     let contents = serde_json::to_string_pretty(&value).map_err(|error| error.to_string())?;
-    fs::write(path, contents).map_err(|error| error.to_string())
+    // Write a sibling file and rename it over the old one, so a crash mid-write
+    // leaves the previous state intact instead of a truncated file.
+    let temp_path = path.with_extension("json.tmp");
+    fs::write(&temp_path, contents).map_err(|error| error.to_string())?;
+    fs::rename(&temp_path, path).map_err(|error| error.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::timer::TimerMode;
+    use std::path::PathBuf;
+
+    fn temp_state_path(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("sitting-time-test-{name}-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        dir.join("state.json")
+    }
+
+    #[test]
+    fn save_then_load_round_trips() {
+        let path = temp_state_path("round-trip");
+        let mut timer = TimerEngine::default();
+        timer.set_mode(TimerMode::StandUp);
+        let general = GeneralSettings {
+            start_minimized_to_tray: true,
+            ..GeneralSettings::default()
+        };
+        save(&path, &timer, &general).unwrap();
+        let restored = load(&path);
+        assert_eq!(restored.timer.snapshot(), timer.snapshot());
+        assert!(restored.general.start_minimized_to_tray);
+        assert!(!path.with_extension("json.tmp").exists());
+        let _ = fs::remove_dir_all(path.parent().unwrap());
+    }
+
+    #[test]
+    fn unreadable_state_is_kept_as_corrupt_copy() {
+        let path = temp_state_path("corrupt");
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(&path, "{ not json").unwrap();
+        let restored = load(&path);
+        assert_eq!(restored.timer.snapshot(), TimerEngine::default().snapshot());
+        let backup = path.with_extension("json.corrupt");
+        assert_eq!(fs::read_to_string(backup).unwrap(), "{ not json");
+        let _ = fs::remove_dir_all(path.parent().unwrap());
+    }
+
+    #[test]
+    fn missing_state_loads_defaults_without_backup() {
+        let path = temp_state_path("missing");
+        let restored = load(&path);
+        assert_eq!(restored.timer.snapshot(), TimerEngine::default().snapshot());
+        assert!(!path.with_extension("json.corrupt").exists());
+    }
 }

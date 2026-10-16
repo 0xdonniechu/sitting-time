@@ -18,7 +18,7 @@ The current MVP launches a compact window, keeps running when the window is clos
 - A hidden, always-on-top reminder WebView renders the optional full-screen transition effect; Rust decides when it is shown.
 - Local JSON/config persistence is sufficient; there is no server, account, database, telemetry, or cloud sync.
 
-Settings and timer state are stored in `state.json` under Tauri's application config directory. Writes occur after user actions, settings changes, and session transitions; the countdown itself remains deadline-based and does not write every second.
+Settings and timer state are stored in `state.json` under Tauri's application config directory. Writes occur after user actions, settings changes, and session transitions; the countdown itself remains deadline-based and does not write every second. Each write goes to a sibling temporary file that is renamed over `state.json`. A `state.json` that cannot be parsed is copied to `state.json.corrupt` before defaults are used, and restored durations outside the settings ranges fall back to the product defaults. Saving settings resets the current session only when a timer duration or the long-break cycle changed.
 
 Timer state will use explicit Rust enums/structs for mode, phase, run state, and persisted timestamps. Elapsed time must be derived from timestamps/deadlines rather than a JavaScript interval, so it remains correct while the window is hidden, inactive, or the machine sleeps.
 
