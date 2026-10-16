@@ -13,6 +13,7 @@
     "windows": [
       {
         "label": "main",
+        "create": false,
         "title": "SittingTime",
         "width": 410,
         "height": 500,
@@ -24,6 +25,7 @@
       },
       {
         "label": "reminder",
+        "create": false,
         "title": "SittingTime Reminder",
         "url": "overlay.html",
         "fullscreen": true,

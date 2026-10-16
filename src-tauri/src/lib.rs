@@ -4,10 +4,12 @@ mod timer;
 
 use settings::{GeneralSettings, SettingsPayload};
 use std::{
+    fs,
+    io::Write,
     path::PathBuf,
     sync::Mutex,
     thread,
-    time::Duration,
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
 use tauri::{
     menu::{Menu, MenuItem, PredefinedMenuItem},
@@ -212,8 +214,35 @@ fn start_timer_worker(app: AppHandle) {
     });
 }
 
+/// A release build has no console, so a panic message is lost and a panic inside
+/// a window callback aborts the process silently. Append each panic to
+/// crash.log next to state.json (the folder of the app identifier).
+fn log_panics_to_file() {
+    let previous = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        if let Some(appdata) = std::env::var_os("APPDATA") {
+            let dir = PathBuf::from(appdata).join("com.donniechu.sittingtime");
+            let _ = fs::create_dir_all(&dir);
+            if let Ok(mut file) = fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(dir.join("crash.log"))
+            {
+                let seconds = SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .map(|elapsed| elapsed.as_secs())
+                    .unwrap_or_default();
+                let backtrace = std::backtrace::Backtrace::force_capture();
+                let _ = writeln!(file, "[{seconds}] {info}\n{backtrace}\n");
+            }
+        }
+        previous(info);
+    }));
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    log_panics_to_file();
     tauri::Builder::default()
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_autostart::init(
@@ -253,6 +282,20 @@ pub fn run() {
                 config_path,
             });
 
+            // The windows are declared with "create": false and built only now:
+            // Tauri creates config windows before setup() runs, and a page that
+            // loads first calls get_timer_state before AppState is managed, which
+            // panics inside a WebView2 callback and aborts the process.
+            for window_config in app.config().app.windows.clone() {
+                let hidden = window_config.label == "main" && start_minimized;
+                let builder = tauri::WebviewWindowBuilder::from_config(app.handle(), &window_config)?;
+                if hidden {
+                    builder.visible(false).build()?;
+                } else {
+                    builder.build()?;
+                }
+            }
+
             let show = MenuItem::with_id(app, "show", "Show", true, None::<&str>)?;
             let start = MenuItem::with_id(app, "start", "Start / Resume", true, None::<&str>)?;
             let pause = MenuItem::with_id(app, "pause", "Pause", true, None::<&str>)?;
@@ -284,9 +327,6 @@ pub fn run() {
                 .build(app)?;
 
             if let Some(window) = app.get_webview_window("main") {
-                if start_minimized {
-                    let _ = window.hide();
-                }
                 let app_handle = app.handle().clone();
                 window.on_window_event(move |event| {
                     if let WindowEvent::CloseRequested { api, .. } = event {
