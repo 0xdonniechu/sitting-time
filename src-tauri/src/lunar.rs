@@ -19,6 +19,8 @@ pub struct CalendarDay {
     pub solar_year: i32,
     /// 0 = Sunday.
     pub weekday: u32,
+    /// ISO 8601 week number (weeks start on Monday; week 1 holds the first Thursday).
+    pub iso_week: u32,
     pub lunar_day: u32,
     pub lunar_month: u32,
     pub lunar_year: i32,
@@ -46,6 +48,7 @@ pub fn calendar_day(epoch_ms: u64) -> CalendarDay {
         solar_month,
         solar_year,
         weekday: (days + 4).rem_euclid(7) as u32,
+        iso_week: iso_week(days),
         lunar_day: lunar.day,
         lunar_month: lunar.month,
         lunar_year: lunar.year,
@@ -58,6 +61,15 @@ fn year_name(year: i32) -> String {
     let can = CAN[(year + 6).rem_euclid(10) as usize];
     let chi = CHI[(year + 8).rem_euclid(12) as usize];
     format!("{can} {chi}")
+}
+
+/// ISO week of a day: the week belongs to the year of its Thursday.
+fn iso_week(days: i64) -> u32 {
+    let iso_weekday = (days + 3).rem_euclid(7) + 1; // 1 = Monday, 1970-01-01 was a Thursday
+    let thursday = days - iso_weekday + 4;
+    let (year, _, _) = civil_from_days(thursday);
+    let jan_first = jd_from_date(1, 1, i64::from(year)) - JULIAN_DAY_OF_UNIX_EPOCH;
+    ((thursday - jan_first) / 7 + 1) as u32
 }
 
 /// Howard Hinnant's days-since-1970 to proleptic Gregorian (year, month, day).
@@ -270,6 +282,19 @@ mod tests {
         assert_eq!(lunar(2054, 5, 7), (30, 3, 2054, false));
         assert_eq!(lunar(2054, 5, 8).0, 1);
         assert_eq!(lunar(2062, 4, 9), (30, 2, 2062, false));
+    }
+
+    #[test]
+    fn iso_weeks_handle_year_boundaries() {
+        let week = |y, m, d| calendar_day(local_midnight(y, m, d)).iso_week;
+        assert_eq!(week(2026, 10, 16), 42);
+        assert_eq!(week(2026, 1, 1), 1); // a Thursday
+        assert_eq!(week(2025, 12, 29), 1); // Monday of 2026's week 1
+        assert_eq!(week(2026, 12, 31), 53); // 2026 has 53 weeks
+        assert_eq!(week(2021, 1, 3), 53); // Sunday in 2020's last week
+        assert_eq!(week(2021, 1, 4), 1);
+        assert_eq!(week(2024, 12, 30), 1); // already 2025's week 1
+        assert_eq!(week(2023, 1, 1), 52); // Sunday, 2022 had 52 weeks
     }
 
     #[test]

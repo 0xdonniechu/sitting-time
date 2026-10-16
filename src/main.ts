@@ -38,6 +38,7 @@ interface CalendarDay {
   solarMonth: number;
   solarYear: number;
   weekday: number;
+  isoWeek: number;
   lunarDay: number;
   lunarMonth: number;
   lunarYear: number;
@@ -46,6 +47,7 @@ interface CalendarDay {
 }
 
 const weekdayNames = ["Chủ Nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"];
+const monthAbbreviations = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 const sessionLabels: Record<SessionKind, string> = {
   focus: "Focus",
@@ -66,9 +68,14 @@ app.innerHTML = `
         <h1 id="mode-title">Pomodoro</h1>
       </div>
       <div class="topbar-side">
-        <div class="today" id="today" role="note">
-          <span class="today-solar" id="today-solar"></span>
-          <span class="today-lunar" id="today-lunar"></span>
+        <div class="week-label" aria-hidden="true">
+          <span class="week-number" id="week-number"></span>
+          <span class="week-month" id="week-month"></span>
+        </div>
+        <div class="calendar" id="today" role="img">
+          <span class="calendar-head" aria-hidden="true"></span>
+          <span class="calendar-day" id="today-solar" aria-hidden="true"></span>
+          <span class="calendar-lunar" id="today-lunar" aria-hidden="true"></span>
         </div>
         <button class="icon-button" id="settings-button" aria-label="Open settings">
           <!-- Lucide "settings" icon, lucide-static v0.460.0, ISC License, (c) Lucide Contributors -->
@@ -158,14 +165,19 @@ let calendarTimer: number | undefined;
 const today = document.querySelector<HTMLElement>("#today")!;
 const todaySolar = document.querySelector<HTMLElement>("#today-solar")!;
 const todayLunar = document.querySelector<HTMLElement>("#today-lunar")!;
+const weekNumber = document.querySelector<HTMLElement>("#week-number")!;
+const weekMonth = document.querySelector<HTMLElement>("#week-month")!;
 
 function renderCalendar(day: CalendarDay): void {
   const solar = `${weekdayNames[day.weekday]}, ${day.solarDay}/${day.solarMonth}/${day.solarYear}`;
   const month = day.lunarLeap ? `${day.lunarMonth} nhuận` : `${day.lunarMonth}`;
-  const lunar = `ÂL ${day.lunarDay}/${month} ${day.lunarYearName}`;
-  todaySolar.textContent = solar;
-  todayLunar.textContent = lunar;
-  today.setAttribute("aria-label", `${solar}, âm lịch ${day.lunarDay}/${month} năm ${day.lunarYearName}`);
+  const full = `${solar} (tuần ${day.isoWeek}) · Âm lịch ${day.lunarDay}/${month} năm ${day.lunarYearName}`;
+  weekNumber.textContent = `W${day.isoWeek}`;
+  weekMonth.textContent = monthAbbreviations[day.solarMonth - 1];
+  todaySolar.textContent = String(day.solarDay);
+  todayLunar.textContent = `${day.lunarDay}/${day.lunarMonth}${day.lunarLeap ? "N" : ""}`;
+  today.title = full;
+  today.setAttribute("aria-label", full);
 }
 
 async function refreshCalendar(): Promise<void> {
