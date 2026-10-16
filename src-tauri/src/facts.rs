@@ -25,7 +25,7 @@ pub const FACTS: &[HealthFact] = &[
     fact("🏃", "WHO khuyến nghị người lớn vận động vừa 150–300 phút hoặc vận động mạnh 75–150 phút mỗi tuần.", "WHO recommends adults get 150–300 minutes of moderate or 75–150 minutes of vigorous activity a week."),
     fact("✨", "Chỉ 11 phút đi bộ nhanh mỗi ngày (75 phút/tuần) liên quan đến giảm 23% nguy cơ tử vong sớm (2023).", "Just 11 minutes of brisk walking a day (75 min/week) is linked to 23% lower risk of early death (2023)."),
     fact("💪", "Tập sức mạnh 30–60 phút mỗi tuần liên quan đến giảm 10–20% nguy cơ tử vong sớm (BJSM, 2022).", "30–60 minutes of strength training a week is linked to 10–20% lower risk of early death (BJSM, 2022)."),
-    fact("👟", "Với người dưới 60 tuổi, lợi ích sống lâu tăng dần đến khoảng 8.000–10.000 bước mỗi ngày (Lancet, 2022).", "For adults under 60, the longevity benefit keeps rising up to about 8,000–10,000 steps a day (Lancet, 2022)."),
+    fact("👟", "Với người dưới 60 tuổi, lợi ích sống lâu tăng dần đến khoảng 8.000–10.000 bước mỗi ngày (Lancet Public Health, 2022).", "For adults under 60, the longevity benefit keeps rising up to about 8,000–10,000 steps a day (Lancet Public Health, 2022)."),
     fact("🦶", "Đi bộ khoảng 100 bước mỗi phút đã đạt cường độ vận động vừa.", "Walking at about 100 steps per minute already counts as moderate-intensity activity."),
     fact("🪜", "Leo trên 5 tầng cầu thang (khoảng 50 bậc) mỗi ngày liên quan đến giảm 20% nguy cơ bệnh tim mạch (2023).", "Climbing more than 5 flights of stairs (about 50 steps) a day is linked to 20% lower heart disease risk (2023)."),
     fact("🫀", "3 lần vận động mạnh 1–2 phút mỗi ngày, như leo cầu thang nhanh, liên quan đến giảm khoảng 40% nguy cơ tử vong sớm.", "Three 1–2 minute bursts of vigorous activity a day, like fast stair climbing, are linked to about 40% lower risk of early death."),
@@ -53,7 +53,7 @@ pub const FACTS: &[HealthFact] = &[
     // Eyes
     fact("👀", "Quy tắc 20-20-20: cứ 20 phút, nhìn xa khoảng 6 mét trong 20 giây.", "The 20-20-20 rule: every 20 minutes, look about 20 feet (6 m) away for 20 seconds."),
     fact("😑", "Bình thường ta chớp mắt 15–20 lần mỗi phút; khi nhìn màn hình, số lần chớp mắt có thể giảm hơn một nửa.", "We normally blink 15–20 times a minute; looking at a screen can cut that by more than half."),
-    fact("👓", "Mắt thường bắt đầu lão thị từ khoảng 40 tuổi; từ tuổi này nên khám mắt 1–2 năm một lần.", "Most eyes start losing near focus around age 40; from then on, get an eye exam every 1–2 years."),
+    fact("👓", "Mắt thường bắt đầu lão thị từ khoảng 40 tuổi; nên khám mắt 2–4 năm một lần, từ 65 tuổi thì 1–2 năm.", "Most eyes start losing near focus around 40; get an eye exam every 2–4 years, and every 1–2 years from 65."),
     fact("🌤️", "Trẻ được ra ngoài trời thêm 40 phút mỗi ngày có tỷ lệ mắc cận thị mới thấp hơn khoảng 23% (JAMA, 2015).", "Children given 40 extra minutes outdoors a day had about 23% fewer new cases of myopia (JAMA, 2015)."),
     // Water
     fact("💧", "Nước chiếm khoảng 50–60% trọng lượng cơ thể người trưởng thành.", "Water makes up about 50–60% of an adult's body weight."),
@@ -70,7 +70,7 @@ pub const FACTS: &[HealthFact] = &[
     // Food and nutrition
     fact("🥦", "WHO khuyến nghị ăn ít nhất 400 g rau và trái cây mỗi ngày, khoảng 5 phần.", "WHO recommends eating at least 400 g of fruit and vegetables a day, about 5 portions."),
     fact("🌈", "Ăn khoảng 800 g rau quả mỗi ngày liên quan đến giảm 31% nguy cơ tử vong sớm (2017).", "Eating about 800 g of fruit and vegetables a day is linked to 31% lower risk of early death (2017)."),
-    fact("🧂", "WHO khuyến nghị dưới 5 g muối mỗi ngày; người Việt trung bình ăn khoảng 9,4 g, gần gấp đôi.", "WHO recommends under 5 g of salt a day; Vietnamese adults eat about 9.4 g on average, nearly double."),
+    fact("🧂", "WHO khuyến nghị dưới 5 g muối mỗi ngày; người Việt trung bình ăn khoảng 8,1 g (2020), hơn 1,5 lần.", "WHO recommends under 5 g of salt a day; Vietnamese adults ate about 8.1 g on average in 2020, over 1.5 times that."),
     fact("🍬", "WHO khuyên đường tự do dưới 50 g mỗi ngày, tốt nhất là dưới 25 g, tức khoảng 6 thìa cà phê.", "WHO advises under 50 g of free sugars a day, ideally under 25 g, about 6 teaspoons."),
     fact("🌾", "Ăn 90 g ngũ cốc nguyên hạt mỗi ngày liên quan đến giảm 22% nguy cơ bệnh tim mạch (BMJ, 2016).", "Eating 90 g of whole grains a day is linked to 22% lower risk of cardiovascular disease (BMJ, 2016)."),
     fact("🥬", "Ăn 25–29 g chất xơ mỗi ngày liên quan đến giảm 15–30% nguy cơ tử vong và bệnh tim (Lancet, 2019).", "Eating 25–29 g of fiber a day is linked to 15–30% lower risk of death and heart disease (Lancet, 2019)."),
@@ -99,7 +99,7 @@ pub const FACTS: &[HealthFact] = &[
     fact("🧾", "Trên nhãn dinh dưỡng, 4 g đường bằng 1 thìa cà phê, 1 g natri bằng khoảng 2,5 g muối.", "On a nutrition label, 4 g of sugar is 1 teaspoon and 1 g of sodium is about 2.5 g of salt."),
     // Sleep
     fact("😴", "Người trưởng thành cần ngủ 7–9 tiếng mỗi đêm.", "Adults need 7–9 hours of sleep a night."),
-    fact("🕰️", "Người ngủ dậy đúng giờ đều đặn nhất có nguy cơ tử vong sớm thấp hơn 20–48% so với người thất thường nhất (2024).", "People with the most regular sleep times had 20–48% lower risk of early death than the least regular (2024)."),
+    fact("🕰️", "Người có giờ đi ngủ và thức dậy đều đặn nhất có nguy cơ tử vong sớm thấp hơn 20–48% so với người thất thường nhất (2024).", "People with the most regular sleep times had 20–48% lower risk of early death than the least regular (2024)."),
     fact("📵", "Đọc trên máy tính bảng trước khi ngủ làm melatonin giảm khoảng 55% và tiết chậm hơn 1,5 giờ so với sách giấy.", "Reading on a tablet before bed cut melatonin by about 55% and delayed it by 1.5 hours versus a paper book."),
     fact("🫖", "Caffeine có thời gian bán thải khoảng 5 giờ: ly cà phê lúc 15h vẫn còn một nửa tác dụng lúc 20h.", "Caffeine has a half-life of about 5 hours: half of a 3 p.m. coffee is still active at 8 p.m."),
     fact("🌡️", "Phòng ngủ ở khoảng 16–19°C thường giúp ngủ sâu hơn.", "A bedroom at about 16–19°C usually supports deeper sleep."),
@@ -109,7 +109,7 @@ pub const FACTS: &[HealthFact] = &[
     fact("🍷", "Uống nhiều rượu bia trước khi ngủ làm chất lượng phục hồi của giấc ngủ giảm khoảng 39% (2018).", "Heavy drinking before bed lowered the restorative quality of sleep by about 39% (2018)."),
     fact("🛏️", "Nằm 20 phút chưa ngủ được thì hãy dậy làm việc nhẹ nhàng, buồn ngủ rồi quay lại giường.", "Can't sleep after 20 minutes? Get up, do something calm, and return to bed when sleepy."),
     // Sunlight
-    fact("☀️", "Ngoài trời ngày âm u vẫn sáng khoảng 10.000 lux, gấp hơn 20 lần đèn trong phòng (300–500 lux).", "Outdoors on an overcast day is about 10,000 lux, over 20 times brighter than indoor lighting (300–500 lux)."),
+    fact("☀️", "Ngoài trời ngày âm u vẫn sáng khoảng 1.000–10.000 lux, gấp nhiều lần đèn trong phòng (300–500 lux).", "Outdoors on an overcast day is about 1,000–10,000 lux, many times brighter than indoor lighting (300–500 lux)."),
     fact("🌞", "Phơi nắng 5–30 phút, ít nhất 2 lần mỗi tuần, thường đủ để da tạo vitamin D.", "5–30 minutes of sun at least twice a week is usually enough for your skin to make vitamin D."),
     fact("🧴", "Khi chỉ số UV từ 3 trở lên, WHO khuyên che chắn da; tia UV thường mạnh nhất từ 10h đến 16h.", "When the UV index is 3 or higher, WHO advises sun protection; UV is usually strongest from 10 a.m. to 4 p.m."),
     fact("🪟", "Nhân viên làm việc gần cửa sổ ngủ nhiều hơn khoảng 46 phút mỗi đêm so với người không có ánh sáng tự nhiên (2014).", "Office workers near windows slept about 46 minutes more a night than those without daylight (2014)."),
@@ -119,7 +119,7 @@ pub const FACTS: &[HealthFact] = &[
     fact("🌬️", "Thở chậm khoảng 6 nhịp mỗi phút trong 5 phút giúp nhịp tim và cơ thể dịu lại.", "Breathing slowly at about 6 breaths a minute for 5 minutes calms your heart rate and body."),
     fact("🫁", "5 phút thở dài theo chu kỳ mỗi ngày (hít 2 lần, thở ra thật dài) cải thiện tâm trạng nhiều hơn thiền (Stanford, 2023).", "5 minutes a day of cyclic sighing (two inhales, one long exhale) lifted mood more than meditation (Stanford, 2023)."),
     fact("🙏", "Viết ra 3 điều tốt đẹp mỗi tối trong 1 tuần giúp tăng hạnh phúc kéo dài tới 6 tháng (2005).", "Writing down 3 good things each evening for one week raised happiness for up to 6 months (2005)."),
-    fact("🤝", "Người có các mối quan hệ xã hội tốt có khả năng sống lâu hơn khoảng 50% (tổng hợp 148 nghiên cứu, 2010).", "People with strong social ties have about 50% higher odds of survival (review of 148 studies, 2010)."),
+    fact("🤝", "Người có các mối quan hệ xã hội tốt có khả năng sống sót cao hơn khoảng 50% (tổng hợp 148 nghiên cứu, 2010).", "People with strong social ties have about 50% higher odds of survival (review of 148 studies, 2010)."),
     fact("🚭", "Sau 1 năm bỏ thuốc lá, nguy cơ bệnh mạch vành giảm còn khoảng một nửa so với người vẫn hút.", "One year after quitting smoking, your risk of coronary heart disease is about half that of a smoker."),
     fact("🧼", "Rửa tay bằng xà phòng ít nhất 20 giây giúp giảm 23–40% bệnh tiêu chảy (CDC).", "Washing your hands with soap for at least 20 seconds cuts diarrhoeal illness by 23–40% (CDC)."),
     fact("🦷", "Đánh răng 2 lần mỗi ngày, mỗi lần 2 phút, với kem đánh răng có fluor.", "Brush your teeth twice a day for 2 minutes each time, with fluoride toothpaste."),
@@ -127,7 +127,7 @@ pub const FACTS: &[HealthFact] = &[
     fact("🍅", "Pomodoro: tập trung 25 phút rồi nghỉ 5 phút; sau 4 lượt thì nghỉ dài 15–30 phút.", "Pomodoro: focus for 25 minutes, then rest for 5; after 4 rounds, take a 15–30 minute break."),
     fact("🔕", "Sau khi bị gián đoạn, trung bình mất khoảng 23 phút để quay lại công việc ban đầu (UC Irvine).", "After an interruption, it takes about 23 minutes on average to get back to the original task (UC Irvine)."),
     fact("😂", "Cười 10–15 phút mỗi ngày đốt thêm khoảng 10–40 kcal (ĐH Vanderbilt).", "Laughing for 10–15 minutes a day burns an extra 10–40 kcal (Vanderbilt University)."),
-    fact("🧘‍♀️", "Khóa tập thiền chánh niệm 8 tuần giúp giảm lo âu và trầm cảm ở mức vừa phải (JAMA, 2014).", "An 8-week mindfulness meditation program moderately reduces anxiety and depression (JAMA, 2014)."),
+    fact("🧘‍♀️", "Khóa tập thiền chánh niệm 8 tuần giúp giảm nhẹ lo âu và trầm cảm (JAMA Intern Med, 2014).", "An 8-week mindfulness meditation program modestly reduces anxiety and depression (JAMA Intern Med, 2014)."),
     fact("📐", "Với người châu Á, vòng eo từ 90 cm (nam) hoặc 80 cm (nữ) là dấu hiệu mỡ bụng có hại.", "For Asian adults, a waist of 90 cm or more (men) or 80 cm or more (women) signals harmful belly fat."),
     fact("🩺", "Nên đo huyết áp ít nhất mỗi năm một lần; huyết áp bình thường là dưới 120/80 mmHg.", "Check your blood pressure at least once a year; normal is below 120/80 mmHg."),
     fact("🎯", "Trung bình mất khoảng 66 ngày để một thói quen mới trở thành tự động (2010).", "On average it takes about 66 days for a new habit to become automatic (2010)."),
