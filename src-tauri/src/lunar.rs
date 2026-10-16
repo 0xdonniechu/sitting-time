@@ -173,9 +173,12 @@ struct LunarDate {
 
 fn solar_to_lunar(day_number: i64, solar_year: i32) -> LunarDate {
     let year = i64::from(solar_year);
-    let k = ((day_number as f64 - 2_415_021.076_998_695) / 29.530_588_853).floor() as i64;
-    let mut month_start = new_moon_day(k + 1);
-    if month_start > day_number {
+    let mut k = ((day_number as f64 - 2_415_021.076_998_695) / 29.530_588_853).floor() as i64 + 1;
+    let mut month_start = new_moon_day(k);
+    // The reference steps back only once; a new moon just after local midnight
+    // (e.g. 2054-05-08 00:00 UTC+7) needs a second step, or the day reads as 0.
+    while month_start > day_number {
+        k -= 1;
         month_start = new_moon_day(k);
     }
     let mut a11 = lunar_month_11(year);
@@ -260,6 +263,13 @@ mod tests {
         assert_eq!(lunar(2020, 5, 23), (1, 4, 2020, true));
         assert_eq!(lunar(2023, 3, 22), (1, 2, 2023, true));
         assert_eq!(lunar(2025, 7, 25), (1, 6, 2025, true));
+    }
+
+    #[test]
+    fn new_moon_just_after_midnight_does_not_give_day_zero() {
+        assert_eq!(lunar(2054, 5, 7), (30, 3, 2054, false));
+        assert_eq!(lunar(2054, 5, 8).0, 1);
+        assert_eq!(lunar(2062, 4, 9), (30, 2, 2062, false));
     }
 
     #[test]
