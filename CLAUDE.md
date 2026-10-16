@@ -45,4 +45,9 @@ sleep or restart, or lost local settings in `state.json`. The implementation rul
 - Git: account `0xdonniechu`, author `0xdonniechu <211609259+0xdonniechu@users.noreply.github.com>`.
   One branch per change (`fix/...`, `feat/...`), merged to `main` only when the owner asks.
   No remote yet; do not create one or push without being asked.
-- Issue tracker: Plane, once this folder is bound (`claude mcp add -s local ...`). Not bound yet.
+
+## Plane
+- Project `SittingTime` (identifier `SIT`) in workspace `stupidrich`, bound to this folder in local scope.
+- Titles and comments in Vietnamese; code, commands and technical terms stay in English.
+- Done means merged to `main` and, for anything on the owner-only list, checked on real hardware.
+- Commit messages and code comments never cite `SIT-n`; the Plane comment cites the commit.
