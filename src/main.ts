@@ -33,6 +33,20 @@ interface SettingsPayload {
   startMinimizedToTray: boolean;
 }
 
+interface CalendarDay {
+  solarDay: number;
+  solarMonth: number;
+  solarYear: number;
+  weekday: number;
+  lunarDay: number;
+  lunarMonth: number;
+  lunarYear: number;
+  lunarLeap: boolean;
+  lunarYearName: string;
+}
+
+const weekdayNames = ["Chủ Nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"];
+
 const sessionLabels: Record<SessionKind, string> = {
   focus: "Focus",
   shortBreak: "Short Break",
@@ -51,12 +65,18 @@ app.innerHTML = `
         <p class="eyebrow">SITTINGTIME</p>
         <h1 id="mode-title">Pomodoro</h1>
       </div>
-      <button class="icon-button" id="settings-button" aria-label="Open settings">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M12 15.25A3.25 3.25 0 1 0 12 8.75a3.25 3.25 0 0 0 0 6.5Z"/>
-          <path d="M19 13.1v-2.2l-2.02-.72a5.2 5.2 0 0 0-.5-1.2l.92-1.94-1.55-1.55-1.94.92a5.2 5.2 0 0 0-1.2-.5L12 3.9H9.8l-.72 2.02a5.2 5.2 0 0 0-1.2.5l-1.94-.92-1.55 1.55.92 1.94a5.2 5.2 0 0 0-.5 1.2l-2.02.72v2.2l2.02.72c.12.42.29.82.5 1.2l-.92 1.94 1.55 1.55 1.94-.92c.38.21.78.38 1.2.5l.72 2.02H12l.72-2.02c.42-.12.82-.29 1.2-.5l1.94.92 1.55-1.55-.92-1.94c.21-.38.38-.78.5-1.2L19 13.1Z"/>
-        </svg>
-      </button>
+      <div class="topbar-side">
+        <div class="today" id="today" role="note">
+          <span class="today-solar" id="today-solar"></span>
+          <span class="today-lunar" id="today-lunar"></span>
+        </div>
+        <button class="icon-button" id="settings-button" aria-label="Open settings">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 15.25A3.25 3.25 0 1 0 12 8.75a3.25 3.25 0 0 0 0 6.5Z"/>
+            <path d="M19 13.1v-2.2l-2.02-.72a5.2 5.2 0 0 0-.5-1.2l.92-1.94-1.55-1.55-1.94.92a5.2 5.2 0 0 0-1.2-.5L12 3.9H9.8l-.72 2.02a5.2 5.2 0 0 0-1.2.5l-1.94-.92-1.55 1.55.92 1.94a5.2 5.2 0 0 0-.5 1.2l-2.02.72v2.2l2.02.72c.12.42.29.82.5 1.2l-.92 1.94 1.55 1.55 1.94-.92c.38.21.78.38 1.2.5l.72 2.02H12l.72-2.02c.42-.12.82-.29 1.2-.5l1.94.92 1.55-1.55-.92-1.94c.21-.38.38-.78.5-1.2L19 13.1Z"/>
+          </svg>
+        </button>
+      </div>
     </header>
 
     <div class="timer-panel" aria-live="polite">
@@ -132,6 +152,31 @@ let currentState: TimerSnapshot | null = null;
 let refreshTimer: number | undefined;
 let refreshInFlight = false;
 let standUpCycleText = "";
+let calendarTimer: number | undefined;
+
+const today = document.querySelector<HTMLElement>("#today")!;
+const todaySolar = document.querySelector<HTMLElement>("#today-solar")!;
+const todayLunar = document.querySelector<HTMLElement>("#today-lunar")!;
+
+function renderCalendar(day: CalendarDay): void {
+  const solar = `${weekdayNames[day.weekday]}, ${day.solarDay}/${day.solarMonth}/${day.solarYear}`;
+  const month = day.lunarLeap ? `${day.lunarMonth} nhuận` : `${day.lunarMonth}`;
+  const lunar = `ÂL ${day.lunarDay}/${month} ${day.lunarYearName}`;
+  todaySolar.textContent = solar;
+  todayLunar.textContent = lunar;
+  today.setAttribute("aria-label", `${solar}, âm lịch ${day.lunarDay}/${month} năm ${day.lunarYearName}`);
+}
+
+async function refreshCalendar(): Promise<void> {
+  window.clearTimeout(calendarTimer);
+  try {
+    renderCalendar(await invoke<CalendarDay>("get_calendar_day"));
+  } catch (error) {
+    console.error(error);
+  } finally {
+    calendarTimer = window.setTimeout(refreshCalendar, 60_000);
+  }
+}
 
 function setStandUpCycleText(settings: SettingsPayload): void {
   standUpCycleText = `${settings.sittingMinutes} min work · ${settings.movementMinutes} min move`;
@@ -286,8 +331,10 @@ document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") {
     window.clearTimeout(refreshTimer);
     void refreshFromRust();
+    void refreshCalendar();
   }
 });
 
 void invoke<SettingsPayload>("get_settings").then(setStandUpCycleText, console.error);
 void refreshFromRust();
+void refreshCalendar();

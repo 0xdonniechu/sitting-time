@@ -1,3 +1,4 @@
+mod lunar;
 mod settings;
 mod timer;
 
@@ -116,6 +117,11 @@ fn preview_reminder(app: AppHandle) {
 }
 
 #[tauri::command]
+fn get_calendar_day() -> lunar::CalendarDay {
+    lunar::today()
+}
+
+#[tauri::command]
 fn get_timer_state(app: AppHandle) -> Result<TimerSnapshot, String> {
     let transitioned = app.state::<AppState>()
         .timer
@@ -224,7 +230,8 @@ pub fn run() {
             get_settings,
             save_settings,
             dismiss_reminder,
-            preview_reminder
+            preview_reminder,
+            get_calendar_day
         ])
         .setup(|app| {
             let config_dir = app.path().app_config_dir()?;
