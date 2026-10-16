@@ -3,7 +3,7 @@ use crate::timer::{
     MIN_DURATION_MINUTES, MIN_SESSIONS_BEFORE_LONG_BREAK,
 };
 use serde::{Deserialize, Serialize};
-use std::{fs, path::Path};
+use std::{fs, io::Write, path::Path};
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", default)]
@@ -139,7 +139,11 @@ pub fn save(path: &Path, timer: &TimerEngine, general: &GeneralSettings) -> Resu
     // Write a sibling file and rename it over the old one, so a crash mid-write
     // leaves the previous state intact instead of a truncated file.
     let temp_path = path.with_extension("json.tmp");
-    fs::write(&temp_path, contents).map_err(|error| error.to_string())?;
+    let mut file = fs::File::create(&temp_path).map_err(|error| error.to_string())?;
+    file.write_all(contents.as_bytes())
+        .and_then(|()| file.sync_all())
+        .map_err(|error| error.to_string())?;
+    drop(file);
     fs::rename(&temp_path, path).map_err(|error| error.to_string())
 }
 
@@ -181,6 +185,25 @@ mod tests {
         assert_eq!(restored.timer.snapshot(), TimerEngine::default().snapshot());
         let backup = path.with_extension("json.corrupt");
         assert_eq!(fs::read_to_string(backup).unwrap(), "{ not json");
+        let _ = fs::remove_dir_all(path.parent().unwrap());
+    }
+
+    #[test]
+    fn invalid_restored_durations_fall_back_to_defaults() {
+        let path = temp_state_path("invalid");
+        let mut timer = TimerEngine::default();
+        timer.set_mode(TimerMode::StandUp);
+        timer.start();
+        save(&path, &timer, &GeneralSettings::default()).unwrap();
+        let contents = fs::read_to_string(&path)
+            .unwrap()
+            .replace("\"sittingSeconds\": 2700", "\"sittingSeconds\": 0");
+        assert!(contents.contains("\"sittingSeconds\": 0"));
+        fs::write(&path, contents).unwrap();
+        let mut restored = load(&path);
+        assert_eq!(restored.timer.settings(), TimerSettings::default());
+        assert!(!restored.timer.tick());
+        assert_eq!(restored.timer.snapshot().remaining_seconds, 45 * 60);
         let _ = fs::remove_dir_all(path.parent().unwrap());
     }
 
