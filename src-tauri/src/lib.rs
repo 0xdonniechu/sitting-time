@@ -214,19 +214,26 @@ fn start_timer_worker(app: AppHandle) {
     });
 }
 
+const CRASH_LOG_MAX_BYTES: u64 = 256 * 1024;
+
 /// A release build has no console, so a panic message is lost and a panic inside
 /// a window callback aborts the process silently. Append each panic to
-/// crash.log next to state.json (the folder of the app identifier).
-fn log_panics_to_file() {
+/// crash.log next to state.json (%APPDATA%\<identifier>, Tauri's app config dir
+/// on Windows); start the file over once it passes CRASH_LOG_MAX_BYTES.
+fn log_panics_to_file(identifier: String) {
     let previous = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |info| {
         if let Some(appdata) = std::env::var_os("APPDATA") {
-            let dir = PathBuf::from(appdata).join("com.donniechu.sittingtime");
+            let dir = PathBuf::from(appdata).join(&identifier);
+            let path = dir.join("crash.log");
             let _ = fs::create_dir_all(&dir);
+            let too_big = fs::metadata(&path).is_ok_and(|meta| meta.len() > CRASH_LOG_MAX_BYTES);
             if let Ok(mut file) = fs::OpenOptions::new()
                 .create(true)
-                .append(true)
-                .open(dir.join("crash.log"))
+                .append(!too_big)
+                .write(true)
+                .truncate(too_big)
+                .open(&path)
             {
                 let seconds = SystemTime::now()
                     .duration_since(UNIX_EPOCH)
@@ -242,7 +249,8 @@ fn log_panics_to_file() {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    log_panics_to_file();
+    let context = tauri::generate_context!();
+    log_panics_to_file(context.config().identifier.clone());
     tauri::Builder::default()
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_autostart::init(
@@ -285,8 +293,19 @@ pub fn run() {
             // The windows are declared with "create": false and built only now:
             // Tauri creates config windows before setup() runs, and a page that
             // loads first calls get_timer_state before AppState is managed, which
-            // panics inside a WebView2 callback and aborts the process.
-            for window_config in app.config().app.windows.clone() {
+            // panics inside a WebView2 callback and aborts the process. The main
+            // window goes last so a catch-up transition it triggers can already
+            // show the reminder.
+            let mut window_configs: Vec<_> = app
+                .config()
+                .app
+                .windows
+                .iter()
+                .filter(|window_config| !window_config.create)
+                .cloned()
+                .collect();
+            window_configs.sort_by_key(|window_config| window_config.label == "main");
+            for window_config in window_configs {
                 let hidden = window_config.label == "main" && start_minimized;
                 let builder = tauri::WebviewWindowBuilder::from_config(app.handle(), &window_config)?;
                 if hidden {
@@ -341,6 +360,22 @@ pub fn run() {
             start_timer_worker(app.handle().clone());
             Ok(())
         })
-        .run(tauri::generate_context!())
+        .run(context)
         .expect("error while running SittingTime");
+}
+
+#[cfg(test)]
+mod tests {
+    /// Any window Tauri creates on its own exists before setup() manages
+    /// AppState, which brings back the startup abort.
+    #[test]
+    fn every_window_is_built_in_setup() {
+        let config: serde_json::Value =
+            serde_json::from_str(include_str!("../tauri.conf.json")).unwrap();
+        let windows = config["app"]["windows"].as_array().unwrap();
+        assert!(!windows.is_empty());
+        for window in windows {
+            assert_eq!(window["create"], false, "window {} must set \"create\": false", window["label"]);
+        }
+    }
 }
