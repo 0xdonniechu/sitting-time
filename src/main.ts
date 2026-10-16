@@ -68,7 +68,7 @@ app.innerHTML = `
         <h1 id="mode-title">Pomodoro</h1>
       </div>
       <div class="topbar-side">
-        <div class="week-label" aria-hidden="true">
+        <div class="week-label" id="week-label" aria-hidden="true">
           <span class="week-number" id="week-number"></span>
           <span class="week-month" id="week-month"></span>
         </div>
@@ -165,6 +165,7 @@ let calendarTimer: number | undefined;
 const today = document.querySelector<HTMLElement>("#today")!;
 const todaySolar = document.querySelector<HTMLElement>("#today-solar")!;
 const todayLunar = document.querySelector<HTMLElement>("#today-lunar")!;
+const weekLabel = document.querySelector<HTMLElement>("#week-label")!;
 const weekNumber = document.querySelector<HTMLElement>("#week-number")!;
 const weekMonth = document.querySelector<HTMLElement>("#week-month")!;
 
@@ -177,6 +178,7 @@ function renderCalendar(day: CalendarDay): void {
   todaySolar.textContent = String(day.solarDay);
   todayLunar.textContent = `${day.lunarDay}/${day.lunarMonth}${day.lunarLeap ? "N" : ""}`;
   today.title = full;
+  weekLabel.title = full;
   today.setAttribute("aria-label", full);
 }
 
