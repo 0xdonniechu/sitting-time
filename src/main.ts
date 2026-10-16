@@ -129,6 +129,12 @@ const settingsMessage = document.querySelector<HTMLElement>("#settings-message")
 let currentState: TimerSnapshot | null = null;
 let refreshTimer: number | undefined;
 let refreshInFlight = false;
+let standUpCycleText = "";
+
+function setStandUpCycleText(settings: SettingsPayload): void {
+  standUpCycleText = `${settings.sittingMinutes} min work · ${settings.movementMinutes} min move`;
+  if (currentState) render(currentState);
+}
 
 function formatTime(seconds: number): string {
   const safeSeconds = Math.max(0, Math.floor(seconds));
@@ -146,7 +152,7 @@ function render(state: TimerSnapshot): void {
   timer.textContent = formatTime(state.remainingSeconds);
   sessionLabel.textContent = sessionLabels[state.session];
   status.textContent = state.status === "running" ? "In progress" : state.status === "paused" ? "Paused" : "Ready";
-  cycle.textContent = isPomodoro ? `Session ${currentFocusNumber} of ${state.focusSessionsBeforeLongBreak}` : "45 min work · 5 min move";
+  cycle.textContent = isPomodoro ? `Session ${currentFocusNumber} of ${state.focusSessionsBeforeLongBreak}` : standUpCycleText;
   startButton.textContent = state.status === "running" ? "Pause" : state.status === "paused" ? "Resume" : "Start";
 
   document.querySelectorAll<HTMLButtonElement>(".mode-button").forEach((button) => {
@@ -199,6 +205,7 @@ function field<T extends HTMLInputElement>(name: string): T {
 async function openSettings(): Promise<void> {
   try {
     const settings = await invoke<SettingsPayload>("get_settings");
+    setStandUpCycleText(settings);
     field("sittingMinutes").value = String(settings.sittingMinutes);
     field("movementMinutes").value = String(settings.movementMinutes);
     field("focusMinutes").value = String(settings.focusMinutes);
@@ -255,6 +262,7 @@ settingsForm.addEventListener("submit", async (event) => {
       field("notificationsEnabled").checked = payload.notificationsEnabled;
     }
     render(await invoke<TimerSnapshot>("save_settings", { settings: payload }));
+    setStandUpCycleText(payload);
     settingsMessage.textContent = "Saved";
     window.setTimeout(closeSettings, 450);
   } catch (error) {
@@ -275,4 +283,5 @@ document.addEventListener("visibilitychange", () => {
   }
 });
 
+void invoke<SettingsPayload>("get_settings").then(setStandUpCycleText, console.error);
 void refreshFromRust();
