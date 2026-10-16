@@ -1,0 +1,23 @@
+[package]
+name = "sitting_time"
+version = "0.1.2"
+description = "A lightweight Windows-first sitting and focus timer"
+authors = ["Donnie Chu"]
+edition = "2021"
+
+[lib]
+name = "sitting_time_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.4.1", features = [] }
+
+[dependencies]
+tauri = { version = "2.11.5", features = ["tray-icon"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tauri-plugin-autostart = "2"
+tauri-plugin-notification = "2"
+
+[lints.rust]
+unsafe_code = "forbid"

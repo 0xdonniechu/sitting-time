@@ -1,0 +1,7 @@
+node_modules/
+dist/
+src-tauri/target/
+src-tauri/gen/schemas/
+*.log
+.claude/settings.local.json
+CLAUDE.local.md

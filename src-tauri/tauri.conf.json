@@ -1,0 +1,52 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "SittingTime",
+  "version": "0.1.2",
+  "identifier": "com.donniechu.sittingtime",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "SittingTime",
+        "width": 410,
+        "height": 500,
+        "resizable": false,
+        "fullscreen": false,
+        "center": true,
+        "visible": true,
+        "decorations": true
+      },
+      {
+        "label": "reminder",
+        "title": "SittingTime Reminder",
+        "url": "overlay.html",
+        "fullscreen": true,
+        "visible": false,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "resizable": false
+      }
+    ],
+    "security": { "csp": null }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis", "msi"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.ico"
+    ],
+    "shortDescription": "A lightweight sitting and focus timer for Windows",
+    "longDescription": "SittingTime is a tray-first Stand Up and Pomodoro timer designed to help you alternate focused work with regular movement."
+  }
+}
