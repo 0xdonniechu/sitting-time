@@ -90,7 +90,7 @@ pub const FACTS: &[HealthFact] = &[
     // Eating habits
     fact("🐢", "Ăn chậm giúp não có thời gian nhận tín hiệu no, nên ít khi ăn quá nhiều.", "Eating slowly gives your brain time to register fullness, so you're less likely to overeat."),
     fact("📺", "Vừa ăn vừa xem màn hình dễ khiến ta ăn nhiều hơn mà không để ý.", "Eating in front of a screen makes it easy to eat more without noticing."),
-    fact("😋", "Nhai kỹ giúp tiêu hóa dễ hơn và thưởng thức bữa ăn trọn vẹn hơn.", "Chewing thoroughly makes digestion easier and lets you enjoy your meal more."),
+    fact("😋", "Nhai mỗi miếng khoảng 20–30 lần trước khi nuốt giúp tiêu hóa dễ hơn và ăn chậm lại.", "Chewing each bite about 20–30 times before swallowing eases digestion and slows your eating."),
     fact("🛌", "Ăn no ngay trước khi ngủ dễ gây trào ngược; nên ăn tối trước giờ ngủ 2–3 tiếng.", "A big meal right before bed can cause reflux; finish dinner 2–3 hours before sleeping."),
     fact("🥕", "Để sẵn trái cây, hạt làm đồ ăn vặt giúp bạn tránh các món nhiều đường.", "Keeping fruit and nuts nearby as snacks helps you skip sugary ones."),
     fact("🧾", "Đọc nhãn dinh dưỡng giúp nhận ra đường và muối ẩn trong thực phẩm đóng gói.", "Reading nutrition labels reveals the hidden sugar and salt in packaged food."),
