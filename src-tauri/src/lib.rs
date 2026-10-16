@@ -1,3 +1,4 @@
+mod facts;
 mod lunar;
 mod settings;
 mod timer;
@@ -26,6 +27,8 @@ struct ReminderAlert {
     body: &'static str,
     show_fullscreen: bool,
     play_sound: bool,
+    /// Shown only on the full-screen reminder, never in the toast.
+    fact: Option<&'static facts::HealthFact>,
 }
 
 struct AppState {
@@ -101,6 +104,8 @@ fn notify_session(app: &AppHandle, session: SessionKind) {
                 body,
                 show_fullscreen: settings.fullscreen_reminders_enabled,
                 play_sound: settings.alert_sound_enabled,
+                fact: (settings.fullscreen_reminders_enabled && settings.health_facts_enabled)
+                    .then(facts::pick),
             });
         }
     }

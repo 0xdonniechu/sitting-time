@@ -12,6 +12,7 @@ pub struct GeneralSettings {
     pub notifications_enabled: bool,
     pub fullscreen_reminders_enabled: bool,
     pub alert_sound_enabled: bool,
+    pub health_facts_enabled: bool,
     pub start_minimized_to_tray: bool,
 }
 
@@ -22,6 +23,7 @@ impl Default for GeneralSettings {
             notifications_enabled: true,
             fullscreen_reminders_enabled: true,
             alert_sound_enabled: true,
+            health_facts_enabled: true,
             start_minimized_to_tray: false,
         }
     }
@@ -40,6 +42,7 @@ pub struct SettingsPayload {
     pub notifications_enabled: bool,
     pub fullscreen_reminders_enabled: bool,
     pub alert_sound_enabled: bool,
+    pub health_facts_enabled: bool,
     pub start_minimized_to_tray: bool,
 }
 
@@ -84,6 +87,7 @@ impl SettingsPayload {
             notifications_enabled: self.notifications_enabled,
             fullscreen_reminders_enabled: self.fullscreen_reminders_enabled,
             alert_sound_enabled: self.alert_sound_enabled,
+            health_facts_enabled: self.health_facts_enabled,
             start_minimized_to_tray: self.start_minimized_to_tray,
         }
     }
@@ -102,6 +106,7 @@ pub fn payload(timer: &TimerEngine, general: &GeneralSettings) -> SettingsPayloa
         notifications_enabled: general.notifications_enabled,
         fullscreen_reminders_enabled: general.fullscreen_reminders_enabled,
         alert_sound_enabled: general.alert_sound_enabled,
+        health_facts_enabled: general.health_facts_enabled,
         start_minimized_to_tray: general.start_minimized_to_tray,
     }
 }
@@ -204,6 +209,29 @@ mod tests {
         assert_eq!(restored.timer.settings(), TimerSettings::default());
         assert!(!restored.timer.tick());
         assert_eq!(restored.timer.snapshot().remaining_seconds, 45 * 60);
+        let _ = fs::remove_dir_all(path.parent().unwrap());
+    }
+
+    #[test]
+    fn state_saved_before_health_facts_keeps_its_settings_and_enables_facts() {
+        let path = temp_state_path("pre-facts");
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        let general = GeneralSettings {
+            alert_sound_enabled: false,
+            start_minimized_to_tray: true,
+            ..GeneralSettings::default()
+        };
+        save(&path, &TimerEngine::default(), &general).unwrap();
+        let contents = fs::read_to_string(&path)
+            .unwrap()
+            .replace("\"healthFactsEnabled\": true,", "");
+        assert!(!contents.contains("healthFactsEnabled"));
+        fs::write(&path, contents).unwrap();
+        let restored = load(&path);
+        assert!(restored.general.health_facts_enabled);
+        assert!(!restored.general.alert_sound_enabled);
+        assert!(restored.general.start_minimized_to_tray);
+        assert!(!path.with_extension("json.corrupt").exists());
         let _ = fs::remove_dir_all(path.parent().unwrap());
     }
 

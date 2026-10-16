@@ -3,16 +3,27 @@ import { listen } from "@tauri-apps/api/event";
 import "@fontsource-variable/inter";
 import "./overlay.css";
 
+interface HealthFact {
+  emoji: string;
+  vi: string;
+  en: string;
+}
+
 interface ReminderAlert {
   title: string;
   body: string;
   showFullscreen: boolean;
   playSound: boolean;
+  fact: HealthFact | null;
 }
 
 const reminder = document.querySelector<HTMLElement>("#reminder")!;
 const title = document.querySelector<HTMLElement>("#reminder-title")!;
 const body = document.querySelector<HTMLElement>("#reminder-body")!;
+const fact = document.querySelector<HTMLElement>("#reminder-fact")!;
+const factEmoji = document.querySelector<HTMLElement>("#fact-emoji")!;
+const factVi = document.querySelector<HTMLElement>("#fact-vi")!;
+const factEn = document.querySelector<HTMLElement>("#fact-en")!;
 let dismissTimer: number | undefined;
 
 function playChime(): void {
@@ -49,10 +60,17 @@ void listen<ReminderAlert>("reminder-alert", (event) => {
 
   title.textContent = alert.title === "Time to stand up" ? "It’s time to stand up" : alert.title;
   body.textContent = alert.body;
+  fact.hidden = alert.fact === null;
+  if (alert.fact) {
+    factEmoji.textContent = alert.fact.emoji;
+    factVi.textContent = alert.fact.vi;
+    factEn.textContent = alert.fact.en;
+  }
   reminder.classList.remove("active");
   requestAnimationFrame(() => reminder.classList.add("active"));
   window.clearTimeout(dismissTimer);
-  dismissTimer = window.setTimeout(() => void dismiss(), 6000);
+  // Two lines of text need longer than a glance to read.
+  dismissTimer = window.setTimeout(() => void dismiss(), alert.fact ? 15000 : 6000);
 });
 
 document.addEventListener("click", () => void dismiss());

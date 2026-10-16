@@ -30,6 +30,7 @@ interface SettingsPayload {
   notificationsEnabled: boolean;
   fullscreenRemindersEnabled: boolean;
   alertSoundEnabled: boolean;
+  healthFactsEnabled: boolean;
   startMinimizedToTray: boolean;
 }
 
@@ -133,6 +134,7 @@ app.innerHTML = `
         <label class="toggle-row"><span>Notifications</span><input name="notificationsEnabled" type="checkbox"><i></i></label>
         <label class="toggle-row"><span>Full-screen reminders</span><input name="fullscreenRemindersEnabled" type="checkbox"><i></i></label>
         <label class="toggle-row"><span>Alert sound</span><input name="alertSoundEnabled" type="checkbox"><i></i></label>
+        <label class="toggle-row"><span>Health facts on reminders</span><input name="healthFactsEnabled" type="checkbox"><i></i></label>
         <label class="toggle-row"><span>Start minimized to tray</span><input name="startMinimizedToTray" type="checkbox"><i></i></label>
       </div>
       <p class="settings-message" id="settings-message"></p>
@@ -282,6 +284,7 @@ async function openSettings(): Promise<void> {
     field("notificationsEnabled").checked = settings.notificationsEnabled;
     field("fullscreenRemindersEnabled").checked = settings.fullscreenRemindersEnabled;
     field("alertSoundEnabled").checked = settings.alertSoundEnabled;
+    field("healthFactsEnabled").checked = settings.healthFactsEnabled;
     field("startMinimizedToTray").checked = settings.startMinimizedToTray;
     settingsMessage.textContent = "";
     shell.classList.add("hidden");
@@ -315,6 +318,7 @@ settingsForm.addEventListener("submit", async (event) => {
     notificationsEnabled: field("notificationsEnabled").checked,
     fullscreenRemindersEnabled: field("fullscreenRemindersEnabled").checked,
     alertSoundEnabled: field("alertSoundEnabled").checked,
+    healthFactsEnabled: field("healthFactsEnabled").checked,
     startMinimizedToTray: field("startMinimizedToTray").checked,
   };
 

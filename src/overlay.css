@@ -54,6 +54,21 @@ h1 {
 #reminder-body { margin: 30px 0 0; font-size: clamp(18px, 2vw, 28px); color: #555; }
 #reminder span { margin-top: 56px; color: #8a8a8a; font-size: 13px; }
 
+#reminder-fact {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  max-width: 720px;
+  margin: 44px 0 0;
+  padding: 22px 32px;
+  border-radius: 18px;
+  background: rgb(85 213 85 / 9%);
+}
+#reminder-fact[hidden] { display: none; }
+#fact-emoji { font-family: "Segoe UI Emoji", sans-serif; font-size: 40px; line-height: 1; }
+#fact-vi { margin: 4px 0 0; font-size: clamp(17px, 1.6vw, 22px); line-height: 1.4; color: #222; }
+#fact-en { margin: 0; font-size: clamp(14px, 1.25vw, 17px); line-height: 1.4; color: #6a6a6a; }
+
 @keyframes screen-flash {
   0% { background-color: rgb(255 255 255 / 0%); filter: brightness(2); }
   35% { background-color: rgb(255 255 255 / 100%); filter: brightness(1.12); }
@@ -67,6 +82,9 @@ h1 {
   #reminder-body { color: #aaa; }
   h1 { background-image: linear-gradient(110deg, #55d555 0%, #2bc3d2 50%, #40bfff 100%); }
   #reminder span { color: #777; }
+  #reminder-fact { background: rgb(85 213 85 / 10%); }
+  #fact-vi { color: #e2e2e4; }
+  #fact-en { color: #9a9a9e; }
   @keyframes screen-flash {
     0% { background-color: rgb(255 255 255 / 0%); filter: brightness(2); }
     35% { background-color: rgb(255 255 255 / 92%); color: #111; filter: brightness(1.15); }
