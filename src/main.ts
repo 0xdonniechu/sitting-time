@@ -61,6 +61,7 @@ app.innerHTML = `
 
     <div class="timer-panel" aria-live="polite">
       <div class="timer" id="timer">25:00</div>
+      <div class="progress" aria-hidden="true"><span id="progress-fill"></span></div>
       <div class="session-label" id="session-label">Focus</div>
       <div class="status" id="status">Ready</div>
       <div class="cycle" id="cycle">Session 1 of 4</div>
@@ -115,6 +116,7 @@ app.innerHTML = `
 
 const modeTitle = document.querySelector<HTMLElement>("#mode-title")!;
 const timer = document.querySelector<HTMLElement>("#timer")!;
+const progressFill = document.querySelector<HTMLElement>("#progress-fill")!;
 const sessionLabel = document.querySelector<HTMLElement>("#session-label")!;
 const status = document.querySelector<HTMLElement>("#status")!;
 const cycle = document.querySelector<HTMLElement>("#cycle")!;
@@ -148,6 +150,10 @@ function render(state: TimerSnapshot): void {
   const isPomodoro = state.selectedMode === "pomodoro";
   const currentFocusNumber = (state.completedFocusSessions % state.focusSessionsBeforeLongBreak) + 1;
 
+  const done = state.totalSeconds > 0 ? 1 - state.remainingSeconds / state.totalSeconds : 0;
+
+  document.body.dataset.session = state.session;
+  progressFill.style.width = `${Math.min(100, Math.max(0, done * 100))}%`;
   modeTitle.textContent = isPomodoro ? "Pomodoro" : "Stand Up";
   timer.textContent = formatTime(state.remainingSeconds);
   sessionLabel.textContent = sessionLabels[state.session];

@@ -14,7 +14,7 @@ The current MVP launches a compact window, keeps running when the window is clos
 - Tauri 2 provides the native Windows shell and system tray.
 - Rust owns timer state, timestamps/deadlines, persistence, notifications, and tray commands.
 - Vanilla TypeScript only renders state and sends commands to Rust.
-- Plain CSS provides a compact light/dark system-aware UI.
+- Plain CSS provides a compact light/dark system-aware UI. Each session kind has its own accent from the Edge Browser palette (#55d555, #2bc3d2, #40bfff, #057fd7, #104e92); text and buttons use darker shades of the same hues so contrast stays at or above 4.5:1. A progress bar shows the share of the session elapsed, computed from the Rust snapshot's remaining and total seconds.
 - A hidden, always-on-top reminder WebView renders the optional full-screen transition effect; Rust decides when it is shown.
 - Local JSON/config persistence is sufficient; there is no server, account, database, telemetry, or cloud sync.
 
