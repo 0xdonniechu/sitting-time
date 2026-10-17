@@ -40,6 +40,8 @@ body { cursor: pointer; }
 h1 {
   max-width: 1000px;
   margin: 0;
+  /* background-clip: text only paints inside the box; the tight tracking lets glyphs overhang it. */
+  padding: 0 .08em .08em;
   font-size: clamp(48px, 7vw, 112px);
   line-height: .98;
   font-weight: 650;
