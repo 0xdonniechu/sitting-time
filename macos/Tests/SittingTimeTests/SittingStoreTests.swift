@@ -369,9 +369,212 @@ func makeStore(
     }
 
     @Test func sitPhaseHasVietnameseTitles() {
-        #expect(SitPhase.sitting.shortTitle == "Ngồi")
-        #expect(SitPhase.standing.shortTitle == "Đứng")
-        #expect(SitPhase.paused.shortTitle == "Nghỉ")
+        #expect(SitPhase.sitting.shortTitle(in: .vietnamese) == "Ngồi")
+        #expect(SitPhase.standing.shortTitle(in: .vietnamese) == "Đứng")
+        #expect(SitPhase.paused.shortTitle(in: .vietnamese) == "Nghỉ")
         #expect(SitPhase.allCases.count == 3)
+    }
+
+    @Test func durationFormatsInEnglishWithPlurals() {
+        #expect(formatDuration(3600, language: .english) == "1 hour")
+        #expect(formatDuration(5400, language: .english) == "1 hour 30 minutes")
+        #expect(formatDuration(60, language: .english) == "1 minute")
+        #expect(formatDuration(300, language: .english) == "5 minutes")
+        #expect(formatDuration(1, language: .english) == "1 second")
+        #expect(formatDuration(30, language: .english) == "30 seconds")
+        #expect(SitPhase.sitting.shortTitle(in: .english) == "Sit")
+        #expect(SitPhase.paused.title(in: .english) == "Paused")
+        #expect(Strings(.english).quitButton == "Quit")
+        #expect(Strings(.english).breaksLine(count: 1, longest: "5 minutes") == "1 break • Longest sit 5 minutes")
+    }
+
+    @Test func weekdayLabelsInBothLanguages() {
+        // 2026-10-25 is a Sunday; 2026-10-26 a Monday (public calendar facts).
+        let sunday = solarDate(2026, 10, 25)
+        let monday = solarDate(2026, 10, 26)
+        #expect(weekdayLabel(for: sunday) == "CN")
+        #expect(weekdayLabel(for: monday) == "T2")
+        #expect(weekdayLabel(for: sunday, language: .english) == "Sun")
+        #expect(weekdayLabel(for: monday, language: .english) == "Mon")
+    }
+
+    @Test func oldSettingsWithoutNewKeysLoadWithDefaults() {
+        let json = #"{"sitReminderMinutes":45,"idlePauseMinutes":5,"standGoalMinutes":60,"autoResumeOnReturn":true,"startPaused":false,"reminderSound":true,"launchAtLogin":false}"#
+        let decoded = try? JSONDecoder().decode(AppSettings.self, from: Data(json.utf8))
+        #expect(decoded?.language == .vietnamese)
+        #expect(decoded?.subCalendar == .vietnamese)
+        #expect(decoded?.fullScreenFlash == true)
+        #expect(decoded?.quoteOnFlash == true)
+        #expect(decoded?.sitReminderMinutes == 45)
+    }
+
+    @Test @MainActor func englishWeekLabelsFollowSettings() {
+        var settings = AppSettings()
+        settings.language = .english
+        let (store, clock, _, _) = makeStore(settings: settings)
+        run(store, clock, seconds: 5)
+        let week = store.weekData()
+        #expect(week.last?.label == "Today")
+    }
+
+    @Test @MainActor func englishReminderTextFollowsSettings() {
+        var settings = AppSettings()
+        settings.language = .english
+        settings.sitReminderMinutes = 1
+        settings.standGoalMinutes = 0
+        let (store, clock, _, spy) = makeStore(settings: settings)
+        run(store, clock, seconds: 65)
+        #expect(spy.reminderCount == 1)
+        #expect(spy.posts.first?.title.contains("time to stand") == true)
+        #expect(spy.posts.first?.body.contains("Today:") == true)
+    }
+
+    @Test @MainActor func flashHookFiresWithRandomQuote() {
+        var settings = AppSettings()
+        settings.sitReminderMinutes = 1
+        settings.standGoalMinutes = 0
+        let (store, clock, _, spy) = makeStore(settings: settings)
+        var flashed: [(String, String, HealthQuote?)] = []
+        store.onSitReminder = { flashed.append(($0, $1, $2)) }
+        run(store, clock, seconds: 65)
+        #expect(flashed.count == 1)
+        if let first = flashed.first {
+            #expect(first.0.contains("đứng dậy"))
+            #expect(first.1.contains("Hôm nay:"))
+            #expect(first.2 != nil)
+            #expect(healthQuotes.contains(first.2!))
+        }
+        // Banner posted silent: the flash owns the sound.
+        #expect(spy.posts.first?.sound == false)
+    }
+
+    @Test @MainActor func flashHookRespectsSwitches() {
+        // Flash off: no hook, banner keeps its sound.
+        var off = AppSettings()
+        off.sitReminderMinutes = 1
+        off.standGoalMinutes = 0
+        off.fullScreenFlash = false
+        let (storeA, clockA, _, spyA) = makeStore(settings: off)
+        var countA = 0
+        storeA.onSitReminder = { _, _, _ in countA += 1 }
+        run(storeA, clockA, seconds: 65)
+        #expect(countA == 0)
+        #expect(spyA.posts.first?.sound == true)
+        // Quote off: hook fires with a nil quote, banner silent.
+        var noQuote = AppSettings()
+        noQuote.sitReminderMinutes = 1
+        noQuote.standGoalMinutes = 0
+        noQuote.quoteOnFlash = false
+        let (storeB, clockB, _, spyB) = makeStore(settings: noQuote)
+        var flashedB: [(String, String, HealthQuote?)] = []
+        storeB.onSitReminder = { flashedB.append(($0, $1, $2)) }
+        run(storeB, clockB, seconds: 65)
+        #expect(flashedB.count == 1)
+        if let first = flashedB.first {
+            #expect(first.2 == nil)
+        }
+        #expect(spyB.posts.first?.sound == false)
+    }
+}
+
+// MARK: - Secondary calendar
+
+/// Noon UTC: safely inside the same civil day in UTC+7/+8 and the test time zones.
+func solarDate(_ year: Int, _ month: Int, _ day: Int) -> Date {
+    var calendar = Calendar(identifier: .gregorian)
+    calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+    return calendar.date(from: DateComponents(year: year, month: month, day: day, hour: 12))!
+}
+
+@Suite struct SubCalendarTests {
+    @Test func offReturnsNil() {
+        #expect(subCalendarDate(for: solarDate(2026, 2, 17), calendar: .off, language: .vietnamese) == nil)
+    }
+
+    @Test func tetIsLunarNewYear() {
+        // Tết Bính Ngọ: 2026-02-17 is lunar 1/1 (public holiday fact).
+        let date = solarDate(2026, 2, 17)
+        for type in [SubCalendar.vietnamese, SubCalendar.chinese] {
+            let lunar = subCalendarDate(for: date, calendar: type, language: .vietnamese)
+            #expect(lunar?.day == "1")
+            #expect(lunar?.sub == "1")
+            #expect(lunar?.isLeapMonth == false)
+            #expect(lunar?.accessibleLabel.contains("Bính Ngọ") == true)
+        }
+        let en = subCalendarDate(for: date, calendar: .vietnamese, language: .english)
+        #expect(en?.accessibleLabel.contains("Binh Ngo") == true)
+    }
+
+    @Test func leapMonthIsFlagged() {
+        // 2025 has a leap 6th lunar month (Jul 25 – Aug 22); Aug 1 is inside it.
+        let lunar = subCalendarDate(for: solarDate(2025, 8, 1), calendar: .vietnamese, language: .vietnamese)
+        #expect(lunar?.isLeapMonth == true)
+        #expect(lunar?.sub == "6N")
+        #expect(lunar?.accessibleLabel.contains("nhuận") == true)
+    }
+
+    @Test func hebrewHolidays() {
+        // Yom Kippur 2026-09-21 is 10 Tishri 5787 (public holiday fact).
+        let kippur = subCalendarDate(for: solarDate(2026, 9, 21), calendar: .hebrew, language: .vietnamese)
+        #expect(kippur?.day == "10")
+        #expect(kippur?.sub == "Tishri")
+        #expect(kippur?.accessibleLabel.contains("5787") == true)
+        // Purim Katan 2024-02-23 is 14 Adar I 5784 (leap year, public fact).
+        let adar1 = subCalendarDate(for: solarDate(2024, 2, 23), calendar: .hebrew, language: .english)
+        #expect(adar1?.day == "14")
+        #expect(adar1?.sub == "Adar I")
+        // Common year: 2025-03-01 is 1 Adar 5785 (Purim is Mar 14).
+        let adar = subCalendarDate(for: solarDate(2025, 3, 1), calendar: .hebrew, language: .english)
+        #expect(adar?.day == "1")
+        #expect(adar?.sub == "Adar")
+        // Purim 2024-03-24 is 14 Adar II 5784.
+        let adar2 = subCalendarDate(for: solarDate(2024, 3, 24), calendar: .hebrew, language: .english)
+        #expect(adar2?.day == "14")
+        #expect(adar2?.sub == "Adar II")
+    }
+
+    @Test func islamicRamadan() {
+        // 2026-03-01 falls inside Ramadan 1447 (public holiday fact); only the
+        // month is asserted because civil vs observed boundaries vary by a day.
+        let date = subCalendarDate(for: solarDate(2026, 3, 1), calendar: .islamic, language: .english)
+        #expect(date?.sub == "Ramadan")
+        #expect(date?.accessibleLabel.contains("1447") == true)
+    }
+
+    @Test func buddhistYear() {
+        let date = subCalendarDate(for: solarDate(2026, 2, 17), calendar: .buddhist, language: .vietnamese)
+        #expect(date?.day == "17")
+        #expect(date?.sub == "2")
+        #expect(date?.accessibleLabel.contains("2569") == true)
+    }
+}
+
+// MARK: - Health quotes
+
+@Suite struct HealthQuoteTests {
+    @Test func exactly365Quotes() {
+        #expect(healthQuotes.count == 365)
+    }
+
+    @Test func quotesFilledShortAndUnique() {
+        var seenVI = Set<String>()
+        var seenEN = Set<String>()
+        for quote in healthQuotes {
+            #expect(!quote.emoji.isEmpty && !quote.vi.isEmpty && !quote.en.isEmpty)
+            #expect(quote.vi.count <= 160)
+            #expect(quote.en.count <= 160)
+            seenVI.insert(quote.vi)
+            seenEN.insert(quote.en)
+        }
+        #expect(seenVI.count == healthQuotes.count)
+        #expect(seenEN.count == healthQuotes.count)
+    }
+
+    @Test func randomPicksStayInsideTheBundle() {
+        // Flash quotes are pre-picked with randomElement(); every pick must
+        // be a member, and 200 picks must not collapse to one quote.
+        let picked = (0..<200).compactMap { _ in healthQuotes.randomElement() }
+        #expect(picked.count == 200)
+        #expect(Set(picked).count > 1)
     }
 }

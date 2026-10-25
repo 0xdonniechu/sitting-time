@@ -77,6 +77,11 @@ public final class SittingStore {
     /// store through .environment instead. Nil in tests unless a test sets it.
     public var onTick: (() -> Void)?
 
+    /// Called on every sit reminder when `fullScreenFlash` is on (MainActor).
+    /// The app shows the full-screen flash; `quote` is pre-picked at random
+    /// when `quoteOnFlash` is on, nil otherwise. Nil in tests unless set.
+    public var onSitReminder: ((String, String, HealthQuote?) -> Void)?
+
     /// Gap between two ticks above which the Mac must have slept: the unknown
     /// interval is discarded instead of polluting the stats.
     private static let sleepGapThreshold: TimeInterval = 120
@@ -180,7 +185,9 @@ public final class SittingStore {
             }
             return WeekDay(
                 dateKey: key,
-                label: index == 6 ? "Hôm nay" : weekdayLabel(for: date),
+                label: index == 6
+                    ? Strings(settings.language).todayLabel
+                    : weekdayLabel(for: date, language: settings.language),
                 sittingSeconds: record.sittingSeconds,
                 standingSeconds: record.standingSeconds
             )
@@ -312,11 +319,23 @@ public final class SittingStore {
         if cont - remindedContinuous >= interval {
             remindedContinuous = cont
             let today = liveToday()
-            reminders.post(
-                "Ngồi \(formatShortDuration(cont)) rồi — đứng dậy nhé!",
-                "Hôm nay: ngồi \(formatShortDuration(today.sittingSeconds)) • đứng \(formatShortDuration(today.standingSeconds))",
-                settings.reminderSound
+            let lang = settings.language
+            let strings = Strings(lang)
+            let title = strings.reminderTitle(continuous: formatShortDuration(cont, language: lang))
+            let body = strings.reminderBody(
+                sitting: formatShortDuration(today.sittingSeconds, language: lang),
+                standing: formatShortDuration(today.standingSeconds, language: lang)
             )
+            // The banner stays silent when the flash shows: the flash owns
+            // the sound, so the user never hears it twice.
+            reminders.post(title, body, settings.reminderSound && !settings.fullScreenFlash)
+            if settings.fullScreenFlash {
+                var quote: HealthQuote?
+                if settings.quoteOnFlash {
+                    quote = healthQuotes.randomElement()
+                }
+                onSitReminder?(title, body, quote)
+            }
         }
     }
 
@@ -326,9 +345,10 @@ public final class SittingStore {
         guard goal > 0 else { return }
         if liveToday().standingSeconds >= goal {
             standGoalNotified = true
+            let lang = settings.language
             reminders.post(
-                "Đạt mục tiêu đứng hôm nay!",
-                "Bạn đã đứng \(formatShortDuration(goal)). Tuyệt vời!",
+                Strings(lang).goalTitle,
+                Strings(lang).goalBody(goal: formatShortDuration(goal, language: lang)),
                 settings.reminderSound
             )
         }

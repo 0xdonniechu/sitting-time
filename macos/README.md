@@ -17,11 +17,18 @@ không tài khoản, dữ liệu chỉ nằm trên máy.
   tiến độ mục tiêu đứng, số lần nghỉ, chặng ngồi dài nhất.
 - **Tự tạm nghỉ**: sau N phút không dùng chuột/phím (mặc định 5′); tự tiếp tục khi quay lại.
 - **Nhắc đứng dậy**: mỗi X phút ngồi liên tục (mặc định 45′), kèm tổng ngồi/đứng hôm nay.
+  Nháy toàn màn hình đen + 1 quote ngẫu nhiên (20 s, bấm/phím bất kỳ để tắt, không
+  cướp focus); tắt nháy thì chỉ còn banner. Có quote thì 20 s, không thì 6 s (như bản Tauri).
 - **Mục tiêu đứng**: nhắc một lần khi chạm mốc mỗi ngày (mặc định 60′).
 - **Ngủ/qua ngày đúng**: khoảng máy ngủ bị loại khỏi thống kê; chặng vắt qua nửa đêm
   được tách đúng hai ngày; chặng ngồi liên tục không đứt lúc qua ngày.
 - **Thống kê 7 ngày**: biểu đồ cột Ngồi/Đứng + từng ngày.
 - **Cài đặt**: mọi ngưỡng, âm thanh, mở cùng máy, quyền nhắc nhở, mở/xóa dữ liệu.
+- **Song ngữ Việt–Anh**: chọn trong Cài đặt, áp dụng cho popover, thống kê, cài đặt và nhắc nhở.
+- **Lịch phụ**: ô lịch đỏ trong popover — Âm lịch (Việt), Lịch Trung, Do Thái, Hồi giáo,
+  Phật lịch hoặc tắt; di chuột lên ô để xem ngày đầy đủ.
+- **Quote sức khỏe**: 365 câu song ngữ (105 câu đầu từ bản Tauri), mỗi lần nháy hiện
+  1 câu ngẫu nhiên — không phải 1 câu mỗi ngày.
 - **Không dock**: app chỉ sống trên menu bar (`LSUIElement`).
 
 ## Build & chạy
@@ -40,9 +47,12 @@ Dữ liệu: `~/Library/Application Support/SittingTime/` (`records.json`, `sett
 
 ## Kiểm thử
 
-- `swift test`: 25 test (Swift Testing) cho state machine với đồng hồ giả —
-  cộng dồn giờ, nhắc nhở, tự nghỉ/tiếp tục, giấc ngủ, qua nửa đêm, mục tiêu, định dạng,
-  checkpoint giữ đồng hồ hiển thị chạy tiếp và không đếm trùng.
+- `swift test`: 41 test (Swift Testing) — state machine với đồng hồ giả (cộng dồn giờ,
+  nhắc nhở, tự nghỉ/tiếp tục, giấc ngủ, qua nửa đêm, mục tiêu, định dạng, checkpoint giữ
+  đồng hồ hiển thị), định dạng tiếng Anh, settings cũ thiếu key vẫn đọc được, lịch phụ
+  (Tết, tháng nhuận, Yom Kippur, Adar I/II, Ramadan, Phật lịch), 365 quote
+  (đủ số lượng, không trùng, không quá 160 ký tự, random nằm trong bộ) và hook flash
+  (gọi đúng mỗi lần nhắc, tôn trọng 2 công tắc, banner câm khi flash kêu).
 - Icon: script vẽ tự kiểm tra pixel (ghế trắng, nền teal, chấm cam, góc trong suốt)
   và kiểm tra file `.icns` đọc lại đủ 7 cỡ ảnh.
 - Kiểm tra GUI trên máy thật (ảnh chụp màn hình + danh sách cửa sổ hệ thống):
@@ -50,9 +60,13 @@ Dữ liệu: `~/Library/Application Support/SittingTime/` (`records.json`, `sett
   popover và cửa sổ thống kê hiển thị số liệu đồng bộ, cập nhật mỗi giây;
   checkpoint ghi `records.json` đúng (30,00 s sau `kill -9` ở giây 40);
   mở bản thứ hai thì bản đó tự thoát (một instance); không crash mới.
+- Nháy nhắc nhở chạy thật đầu-cuối: hẹn nhắc 1 phút, đúng phút 60 cửa sổ nháy hiện
+  toàn màn hình (lớp screenSaver) với quote ngẫu nhiên, rồi tự tắt (cửa sổ biến mất);
+  3 lần chạy cho 3 quote khác nhau. Cửa sổ SwiftUI tự co theo nội dung nên view nháy
+  phải đặt khung đúng cỡ màn hình, và nền mờ không ăn trên cửa sổ này nên dùng đen đặc.
 - Chưa kiểm tra (cần một cú click chuột thật của bạn): bấm các nút trong popover,
-  hộp xin quyền gửi nhắc nhở lần đầu, banner nhắc nhở, và nút Thoát — automation
-  trên máy này không nhìn/click được cửa sổ của app menu bar nên phần này chờ bạn.
+  hộp xin quyền gửi nhắc nhở lần đầu, banner nhắc nhở, nút Thoát, và tắt-nháy-bằng-click
+  — automation trên máy này không nhìn/click được cửa sổ của app menu bar nên chờ bạn.
   Đường lưu khi thoát đã có checkpoint đỡ: tệ nhất mất 30 s cuối nếu bị kill.
 
 ## Bố cục
@@ -68,8 +82,13 @@ Sources/SittingCore/             # logic thuần, test được (không AppKit/S
   ReminderCenter.swift           # bọc UserNotifications (live/silent)
   LoginItemManager.swift         # SMAppService
   SitPhase.swift / Formatting.swift
+  AppLanguage.swift              # tiếng Việt / tiếng Anh + 5 loại lịch phụ (+ tắt)
+  Strings.swift                  # bảng chuỗi song ngữ duy nhất cho toàn app
+  SubCalendar.swift              # tính ngày lịch phụ bằng Foundation (âm = Chinese ở UTC+7)
+  HealthQuotes.swift             # 365 quote song ngữ, mỗi lần nháy lấy ngẫu nhiên 1 câu
 Sources/SittingTime/             # SwiftUI: menu bar, popover, thống kê (Charts), cài đặt
-Tests/SittingTimeTests/          # 25 test với FakeClock/FakeIdle/SpyNotify
+  FlashCenter.swift              # cửa sổ nháy đen toàn màn hình + thẻ tin nhắn/quote
+Tests/SittingTimeTests/          # 41 test với FakeClock/FakeIdle/SpyNotify
 scripts/build-app.sh             # test → release → icon → ráp + ký .app
 scripts/generate-icon.swift      # vẽ icon + tự kiểm tra + ráp .icns thủ công
 Resources/Info.plist             # LSUIElement, id com.0xdonniechu.sittingtime
