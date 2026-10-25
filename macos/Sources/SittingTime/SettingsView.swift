@@ -16,13 +16,41 @@ struct SettingsView: View {
         let lang = store.settings.language
         let strings = Strings(lang)
         Form {
-            Section(strings.reminderSection) {
-                Stepper(
-                    store.settings.sitReminderMinutes == 0
-                        ? strings.reminderOff
-                        : strings.reminderEvery(minutes: store.settings.sitReminderMinutes),
-                    value: $store.settings.sitReminderMinutes, in: 0...240, step: 5
-                )
+            Section(strings.sessionSection) {
+                Picker(strings.modeLabel, selection: Binding(
+                    get: { store.settings.sessionMode },
+                    set: { store.setMode($0) }
+                )) {
+                    ForEach(SessionMode.allCases, id: \.self) { mode in
+                        Text(mode.displayName).tag(mode)
+                    }
+                }
+                if store.settings.sessionMode == .standUp {
+                    Stepper(
+                        strings.workMinutes(store.settings.standUpWorkMinutes),
+                        value: $store.settings.standUpWorkMinutes, in: 1...240, step: 5
+                    )
+                    Stepper(
+                        strings.moveMinutes(store.settings.standUpBreakMinutes),
+                        value: $store.settings.standUpBreakMinutes, in: 1...60
+                    )
+                } else {
+                    Stepper(
+                        strings.workMinutes(store.settings.pomodoroWorkMinutes),
+                        value: $store.settings.pomodoroWorkMinutes, in: 1...240, step: 5
+                    )
+                    Stepper(
+                        strings.shortMinutes(store.settings.pomodoroShortMinutes),
+                        value: $store.settings.pomodoroShortMinutes, in: 1...60
+                    )
+                    Stepper(
+                        strings.longMinutes(store.settings.pomodoroLongMinutes),
+                        value: $store.settings.pomodoroLongMinutes, in: 1...60
+                    )
+                }
+            }
+
+            Section(strings.notifySection) {
                 Toggle(strings.soundToggle, isOn: $store.settings.reminderSound)
                 Toggle(strings.flashToggle, isOn: $store.settings.fullScreenFlash)
                 Toggle(strings.quoteToggle, isOn: $store.settings.quoteOnFlash)

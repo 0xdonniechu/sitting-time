@@ -2,8 +2,18 @@ import Foundation
 
 /// User-tunable behaviour. Persisted as JSON; unknown keys from older versions are ignored.
 public struct AppSettings: Codable, Sendable, Equatable {
-    /// Remind to stand up after this many continuous sitting minutes. 0 disables reminders.
-    public var sitReminderMinutes: Int
+    /// Countdown session model: Stand Up (work/move) or Pomodoro (focus/breaks).
+    public var sessionMode: SessionMode
+    /// Stand Up work session length in minutes.
+    public var standUpWorkMinutes: Int
+    /// Stand Up move-break length in minutes.
+    public var standUpBreakMinutes: Int
+    /// Pomodoro focus session length in minutes.
+    public var pomodoroWorkMinutes: Int
+    /// Pomodoro short-break length in minutes.
+    public var pomodoroShortMinutes: Int
+    /// Pomodoro long-break length in minutes (after every 4th focus).
+    public var pomodoroLongMinutes: Int
     /// Auto-pause tracking after this many minutes without keyboard/mouse input.
     public var idlePauseMinutes: Int
     /// Daily standing goal in minutes. 0 disables the goal.
@@ -26,7 +36,12 @@ public struct AppSettings: Codable, Sendable, Equatable {
     public var quoteOnFlash: Bool
 
     public init(
-        sitReminderMinutes: Int = 45,
+        sessionMode: SessionMode = .standUp,
+        standUpWorkMinutes: Int = 45,
+        standUpBreakMinutes: Int = 5,
+        pomodoroWorkMinutes: Int = 25,
+        pomodoroShortMinutes: Int = 5,
+        pomodoroLongMinutes: Int = 15,
         idlePauseMinutes: Int = 5,
         standGoalMinutes: Int = 60,
         autoResumeOnReturn: Bool = true,
@@ -38,7 +53,12 @@ public struct AppSettings: Codable, Sendable, Equatable {
         fullScreenFlash: Bool = true,
         quoteOnFlash: Bool = true
     ) {
-        self.sitReminderMinutes = sitReminderMinutes
+        self.sessionMode = sessionMode
+        self.standUpWorkMinutes = standUpWorkMinutes
+        self.standUpBreakMinutes = standUpBreakMinutes
+        self.pomodoroWorkMinutes = pomodoroWorkMinutes
+        self.pomodoroShortMinutes = pomodoroShortMinutes
+        self.pomodoroLongMinutes = pomodoroLongMinutes
         self.idlePauseMinutes = idlePauseMinutes
         self.standGoalMinutes = standGoalMinutes
         self.autoResumeOnReturn = autoResumeOnReturn
@@ -52,16 +72,24 @@ public struct AppSettings: Codable, Sendable, Equatable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case sitReminderMinutes, idlePauseMinutes, standGoalMinutes
+        case sessionMode, standUpWorkMinutes, standUpBreakMinutes
+        case pomodoroWorkMinutes, pomodoroShortMinutes, pomodoroLongMinutes
+        case idlePauseMinutes, standGoalMinutes
         case autoResumeOnReturn, startPaused, reminderSound, launchAtLogin
         case language, subCalendar, fullScreenFlash, quoteOnFlash
     }
 
     /// Every field falls back to its default: a settings.json saved before a
-    /// field existed (e.g. `language`) still loads instead of failing the decode.
+    /// field existed (or from the pre-session model, e.g. `sitReminderMinutes`)
+    /// still loads instead of failing the decode.
     public init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        sitReminderMinutes = try c.decodeIfPresent(Int.self, forKey: .sitReminderMinutes) ?? 45
+        sessionMode = try c.decodeIfPresent(SessionMode.self, forKey: .sessionMode) ?? .standUp
+        standUpWorkMinutes = try c.decodeIfPresent(Int.self, forKey: .standUpWorkMinutes) ?? 45
+        standUpBreakMinutes = try c.decodeIfPresent(Int.self, forKey: .standUpBreakMinutes) ?? 5
+        pomodoroWorkMinutes = try c.decodeIfPresent(Int.self, forKey: .pomodoroWorkMinutes) ?? 25
+        pomodoroShortMinutes = try c.decodeIfPresent(Int.self, forKey: .pomodoroShortMinutes) ?? 5
+        pomodoroLongMinutes = try c.decodeIfPresent(Int.self, forKey: .pomodoroLongMinutes) ?? 15
         idlePauseMinutes = try c.decodeIfPresent(Int.self, forKey: .idlePauseMinutes) ?? 5
         standGoalMinutes = try c.decodeIfPresent(Int.self, forKey: .standGoalMinutes) ?? 60
         autoResumeOnReturn = try c.decodeIfPresent(Bool.self, forKey: .autoResumeOnReturn) ?? true
@@ -74,9 +102,24 @@ public struct AppSettings: Codable, Sendable, Equatable {
         quoteOnFlash = try c.decodeIfPresent(Bool.self, forKey: .quoteOnFlash) ?? true
     }
 
+    /// Session length in minutes for one kind under one mode.
+    public func minutes(for kind: SessionKind, mode: SessionMode) -> Int {
+        switch (mode, kind) {
+        case (.standUp, .work): return standUpWorkMinutes
+        case (.standUp, _): return standUpBreakMinutes
+        case (.pomodoro, .work): return pomodoroWorkMinutes
+        case (.pomodoro, .shortBreak): return pomodoroShortMinutes
+        case (.pomodoro, .longBreak): return pomodoroLongMinutes
+        }
+    }
+
     /// Clamps every numeric field to its sane range. Called after loading and after edits.
     public mutating func clamp() {
-        sitReminderMinutes = min(max(sitReminderMinutes, 0), 240)
+        standUpWorkMinutes = min(max(standUpWorkMinutes, 1), 240)
+        standUpBreakMinutes = min(max(standUpBreakMinutes, 1), 60)
+        pomodoroWorkMinutes = min(max(pomodoroWorkMinutes, 1), 240)
+        pomodoroShortMinutes = min(max(pomodoroShortMinutes, 1), 60)
+        pomodoroLongMinutes = min(max(pomodoroLongMinutes, 1), 60)
         idlePauseMinutes = min(max(idlePauseMinutes, 1), 60)
         standGoalMinutes = min(max(standGoalMinutes, 0), 600)
     }

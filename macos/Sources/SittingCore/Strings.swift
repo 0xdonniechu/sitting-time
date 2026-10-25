@@ -55,16 +55,39 @@ public struct Strings: Sendable {
 
     public func breaksLine(count: Int, longest: String) -> String {
         if vi {
-            return "Nghỉ \(count) lần • Ngồi lâu nhất \(longest)"
+            return "Đứng dậy \(count) lần • Ngồi lâu nhất \(longest)"
         }
         return count == 1
-            ? "1 break • Longest sit \(longest)"
-            : "\(count) breaks • Longest sit \(longest)"
+            ? "1 stand-up • Longest sit \(longest)"
+            : "\(count) stand-ups • Longest sit \(longest)"
     }
 
     public var statsButton: String { vi ? "Thống kê" : "Statistics" }
     public var settingsButton: String { vi ? "Cài đặt…" : "Settings…" }
     public var quitButton: String { vi ? "Thoát" : "Quit" }
+    public var skipButton: String { vi ? "Bỏ qua" : "Skip" }
+
+    // MARK: - Sessions
+
+    public func sessionTitle(kind: SessionKind, mode: SessionMode, focusIndex: Int) -> String {
+        switch (kind, mode) {
+        case (.work, .pomodoro):
+            let n = SessionMode.pomodoroCycleLength
+            return vi ? "Tập trung \(focusIndex)/\(n)" : "Focus \(focusIndex)/\(n)"
+        case (.work, .standUp):
+            return vi ? "Làm việc" : "Work"
+        case (.shortBreak, .standUp):
+            return vi ? "Vận động" : "Move"
+        case (.shortBreak, .pomodoro):
+            return vi ? "Nghỉ ngắn" : "Short break"
+        case (.longBreak, _):
+            return vi ? "Nghỉ dài" : "Long break"
+        }
+    }
+
+    // MARK: - Settings window
+
+    public var settingsPanelTitle: String { vi ? "Cài đặt" : "Settings" }
 
     // MARK: - Stats window
 
@@ -91,16 +114,24 @@ public struct Strings: Sendable {
 
     // MARK: - Settings
 
-    public var reminderSection: String { vi ? "Nhắc nhở đứng dậy" : "Stand-up reminders" }
-    public var reminderOff: String { vi ? "Tắt nhắc nhở" : "Reminders off" }
+    public var sessionSection: String { vi ? "Phiên làm việc" : "Work sessions" }
+    public var notifySection: String { vi ? "Thông báo hết phiên" : "Session alerts" }
+    public var modeLabel: String { vi ? "Chế độ" : "Mode" }
 
-    public func reminderEvery(minutes: Int) -> String {
-        if vi {
-            return "Mỗi \(minutes) phút ngồi liên tục"
-        }
-        return minutes == 1
-            ? "Every minute of continuous sitting"
-            : "Every \(minutes) minutes of continuous sitting"
+    public func workMinutes(_ minutes: Int) -> String {
+        vi ? "Làm việc: \(minutes) phút" : "Work: \(minutes) min"
+    }
+
+    public func moveMinutes(_ minutes: Int) -> String {
+        vi ? "Vận động: \(minutes) phút" : "Move: \(minutes) min"
+    }
+
+    public func shortMinutes(_ minutes: Int) -> String {
+        vi ? "Nghỉ ngắn: \(minutes) phút" : "Short break: \(minutes) min"
+    }
+
+    public func longMinutes(_ minutes: Int) -> String {
+        vi ? "Nghỉ dài: \(minutes) phút" : "Long break: \(minutes) min"
     }
 
     public var soundToggle: String { vi ? "Âm thanh nhắc nhở" : "Reminder sound" }
@@ -183,8 +214,12 @@ public struct Strings: Sendable {
 
     // MARK: - Notifications
 
-    public func reminderTitle(continuous: String) -> String {
-        vi ? "Ngồi \(continuous) rồi — đứng dậy nhé!" : "Sat \(continuous) — time to stand!"
+    public func workEndTitle(duration: String) -> String {
+        vi ? "Hết \(duration) làm việc — đứng dậy vận động!" : "Work done after \(duration) — stand up and move!"
+    }
+
+    public var breakOverTitle: String {
+        vi ? "Hết giờ nghỉ — vào phiên mới!" : "Break over — back to work!"
     }
 
     public func reminderBody(sitting: String, standing: String) -> String {

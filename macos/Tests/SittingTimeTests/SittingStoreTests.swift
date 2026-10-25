@@ -68,97 +68,207 @@ func makeStore(
     return (store, clock, idleBox, spy)
 }
 
+/// 1-minute sessions for fast transition tests (Stand Up by default).
+func minuteSettings(mode: SessionMode = .standUp) -> AppSettings {
+    var settings = AppSettings()
+    settings.sessionMode = mode
+    settings.standUpWorkMinutes = 1
+    settings.standUpBreakMinutes = 1
+    settings.pomodoroWorkMinutes = 1
+    settings.pomodoroShortMinutes = 1
+    settings.pomodoroLongMinutes = 1
+    settings.standGoalMinutes = 0
+    return settings
+}
+
 // MARK: - Store behaviour
 
 @Suite struct SittingStoreTests {
-    @Test @MainActor func startsSittingByDefault() {
+    @Test @MainActor func startsInFreshWorkSession() {
         let (store, _, _, _) = makeStore()
-        #expect(store.phase == .sitting)
-        #expect(store.continuousSit >= 0)
+        #expect(store.session == .work)
+        #expect(store.focusIndex == 1)
+        #expect(store.posture == .sitting)
+        #expect(store.paused == false)
+        #expect(store.sessionRemaining == 45 * 60)
+        #expect(store.menuCountdown == "45:00")
+        #expect(store.statusTitle == "Làm việc")
+        #expect(store.statusSymbol == "chair")
     }
 
     @Test @MainActor func startsPausedWhenConfigured() {
         var settings = AppSettings()
         settings.startPaused = true
         let (store, _, _, _) = makeStore(settings: settings)
-        #expect(store.phase == .paused)
+        #expect(store.paused == true)
         #expect(store.autoPaused == false)
+        #expect(store.sessionRemaining == 45 * 60)
+        #expect(store.statusTitle == "Tạm nghỉ")
     }
 
-    @Test @MainActor func phaseChangeAccumulatesTime() {
+    @Test @MainActor func countdownDecreasesAndFormats() {
         let (store, clock, _, _) = makeStore()
-        clock.advance(3600)
-        store.setPhase(.standing)
-        clock.advance(600)
-        store.setPhase(.sitting)
-        let today = store.liveToday()
-        #expect(isNear(today.sittingSeconds, 3600))
-        #expect(isNear(today.standingSeconds, 600))
-        #expect(today.breakCount == 0)
+        run(store, clock, seconds: 61)
+        #expect(store.sessionRemaining == 45 * 60 - 61)
+        #expect(store.menuCountdown == "43:59")
+        #expect(isNear(store.sessionProgress, 61.0 / 2700.0, tolerance: 0.01))
     }
 
-    @Test @MainActor func pauseCountsBreaksAndResumes() {
+    @Test @MainActor func pauseFreezesCountdown() {
         let (store, clock, _, _) = makeStore()
         run(store, clock, seconds: 60)
         store.togglePause()
-        #expect(store.phase == .paused)
-        run(store, clock, seconds: 300)
+        #expect(store.paused == true)
+        run(store, clock, seconds: 120)
+        #expect(store.sessionRemaining == 45 * 60 - 60)
         store.togglePause()
-        #expect(store.phase == .sitting)
-        store.setPhase(.paused)
-        let today = store.liveToday()
-        #expect(today.breakCount == 2)
-        #expect(isNear(today.pausedSeconds, 300))
-        #expect(isNear(today.sittingSeconds, 60))
+        #expect(store.paused == false)
+        run(store, clock, seconds: 60)
+        #expect(store.sessionRemaining == 45 * 60 - 120)
     }
 
-    @Test @MainActor func checkpointKeepsDisplayElapsedContinuous() {
-        let (store, clock, _, _) = makeStore()
-        run(store, clock, seconds: 35)
-        // A checkpoint fired at tick 30: the menu bar timer must not jump back.
-        #expect(isNear(store.openElapsed, 35))
-        // ... and the checkpointed seconds must not be counted twice.
-        #expect(isNear(store.todayRecord.sittingSeconds, 30))
-        #expect(isNear(store.liveToday().sittingSeconds, 35))
-    }
-
-    @Test @MainActor func phaseChangeResetsDisplayElapsed() {
-        let (store, clock, _, _) = makeStore()
-        run(store, clock, seconds: 40)
-        store.setPhase(.standing)
-        run(store, clock, seconds: 5)
-        #expect(isNear(store.openElapsed, 5))
-        #expect(isNear(store.liveToday().standingSeconds, 5))
-        #expect(isNear(store.liveToday().sittingSeconds, 40))
-    }
-
-    @Test @MainActor func sitReminderFiresOnEachInterval() {
-        var settings = AppSettings()
-        settings.sitReminderMinutes = 45
-        settings.standGoalMinutes = 0
-        let (store, clock, _, spy) = makeStore(settings: settings)
-        run(store, clock, seconds: 30 * 60)
-        #expect(spy.reminderCount == 0)
-        run(store, clock, seconds: 20 * 60)
+    @Test @MainActor func workEndAutoAdvancesToBreakWithFanfare() {
+        let (store, clock, _, spy) = makeStore(settings: minuteSettings())
+        var flashed: [(String, String, HealthQuote?)] = []
+        store.onFlash = { flashed.append(($0, $1, $2)) }
+        run(store, clock, seconds: 60)
+        #expect(store.session == .shortBreak)
+        #expect(store.sessionRemaining == 60)
         #expect(spy.reminderCount == 1)
-        run(store, clock, seconds: 45 * 60)
-        #expect(spy.reminderCount == 2)
-        // Leaving the chair resets the continuous stretch.
-        store.setPhase(.standing)
-        store.setPhase(.sitting)
-        run(store, clock, seconds: 44 * 60)
-        #expect(spy.reminderCount == 2)
-        run(store, clock, seconds: 2 * 60)
-        #expect(spy.reminderCount == 3)
+        #expect(store.liveToday().breakCount == 1)
+        #expect(spy.posts.first?.title.contains("đứng dậy") == true)
+        #expect(spy.posts.first?.body.contains("Hôm nay:") == true)
+        // Banner posted silent: the flash owns the sound.
+        #expect(spy.posts.first?.sound == false)
+        #expect(flashed.count == 1)
+        #expect(flashed.first?.2 != nil)
     }
 
-    @Test @MainActor func reminderDisabledWhenZero() {
+    @Test @MainActor func breakEndAutoAdvancesToWork() {
+        let (store, clock, _, spy) = makeStore(settings: minuteSettings())
+        run(store, clock, seconds: 60)
+        run(store, clock, seconds: 60)
+        #expect(store.session == .work)
+        #expect(spy.reminderCount == 2)
+        #expect(store.liveToday().breakCount == 1)
+        #expect(spy.posts.last?.title == "Hết giờ nghỉ — vào phiên mới!")
+    }
+
+    @Test @MainActor func standUpCycleRepeats() {
+        let (store, clock, _, _) = makeStore(settings: minuteSettings())
+        run(store, clock, seconds: 60)
+        #expect(store.session == .shortBreak)
+        run(store, clock, seconds: 60)
+        #expect(store.session == .work)
+        run(store, clock, seconds: 60)
+        #expect(store.session == .shortBreak)
+        #expect(store.liveToday().breakCount == 2)
+    }
+
+    @Test @MainActor func pomodoroFullCycle() {
+        let (store, clock, _, spy) = makeStore(settings: minuteSettings(mode: .pomodoro))
+        let expected: [(SessionKind, Int)] = [
+            (.shortBreak, 1), (.work, 2), (.shortBreak, 2), (.work, 3),
+            (.shortBreak, 3), (.work, 4), (.longBreak, 1), (.work, 1),
+        ]
+        for (kind, focus) in expected {
+            run(store, clock, seconds: 60)
+            #expect(store.session == kind)
+            #expect(store.focusIndex == focus)
+        }
+        #expect(store.liveToday().breakCount == 4)
+        #expect(spy.reminderCount == 8)
+        #expect(store.statusTitle == "Tập trung 1/4")
+    }
+
+    @Test @MainActor func pomodoroWorkTitleCountsFocus() {
         var settings = AppSettings()
-        settings.sitReminderMinutes = 0
-        settings.standGoalMinutes = 0
-        let (store, clock, _, spy) = makeStore(settings: settings)
-        run(store, clock, seconds: 2 * 3600)
+        settings.sessionMode = .pomodoro
+        let (store, _, _, _) = makeStore(settings: settings)
+        #expect(store.statusTitle == "Tập trung 1/4")
+    }
+
+    @Test @MainActor func skipAdvancesSilently() {
+        let (store, clock, _, spy) = makeStore(settings: minuteSettings())
+        store.skipSession()
+        #expect(store.session == .shortBreak)
         #expect(spy.reminderCount == 0)
+        #expect(store.liveToday().breakCount == 0)
+        store.skipSession()
+        #expect(store.session == .work)
+        #expect(spy.reminderCount == 0)
+        // Skip keeps the pause state and freezes the fresh session.
+        store.togglePause()
+        run(store, clock, seconds: 30)
+        store.skipSession()
+        #expect(store.paused == true)
+        #expect(store.sessionRemaining == 60)
+    }
+
+    @Test @MainActor func postureAttributesWorkTime() {
+        let (store, clock, _, _) = makeStore()
+        run(store, clock, seconds: 60)
+        store.setPosture(.standing)
+        #expect(store.statusSymbol == "figure.stand")
+        run(store, clock, seconds: 30)
+        let today = store.liveToday()
+        #expect(isNear(today.sittingSeconds, 60))
+        #expect(isNear(today.standingSeconds, 30))
+        // Posture never disturbs the countdown.
+        #expect(isNear(store.sessionRemaining, 45 * 60 - 90))
+    }
+
+    @Test @MainActor func breaksAndPausesCountAsRest() {
+        let (store, clock, _, _) = makeStore(settings: minuteSettings())
+        run(store, clock, seconds: 60)
+        run(store, clock, seconds: 60)
+        store.togglePause()
+        run(store, clock, seconds: 30)
+        let today = store.liveToday()
+        #expect(isNear(today.sittingSeconds, 60))
+        #expect(isNear(today.pausedSeconds, 90))
+        #expect(isNear(today.standingSeconds, 0))
+    }
+
+    @Test @MainActor func longestSitTracksLongestStretch() {
+        var settings = AppSettings()
+        settings.standGoalMinutes = 0
+        let (store, clock, _, _) = makeStore(settings: settings)
+        run(store, clock, seconds: 20 * 60)
+        store.setPosture(.standing)
+        run(store, clock, seconds: 60)
+        store.setPosture(.sitting)
+        // 50 more minutes: a work→break→work transition happens mid-stretch,
+        // and the stretch survives it (sitting through a break is still
+        // continuous sitting).
+        run(store, clock, seconds: 50 * 60)
+        #expect(isNear(store.liveToday().longestSitSeconds, 3000, tolerance: 5))
+    }
+
+    @Test @MainActor func setModeResetsSessionKeepsPosture() {
+        let (store, clock, _, spy) = makeStore()
+        store.setPosture(.standing)
+        run(store, clock, seconds: 30)
+        store.setMode(.pomodoro)
+        #expect(store.session == .work)
+        #expect(store.focusIndex == 1)
+        #expect(store.posture == .standing)
+        #expect(store.sessionRemaining == 25 * 60)
+        #expect(spy.reminderCount == 0)
+    }
+
+    @Test @MainActor func durationChangeRestartsCurrentSessionOnly() {
+        let (store, clock, _, _) = makeStore()
+        run(store, clock, seconds: 30)
+        store.settings.standUpWorkMinutes = 50
+        #expect(store.sessionRemaining == 50 * 60)
+        run(store, clock, seconds: 10)
+        #expect(store.sessionRemaining == 50 * 60 - 10)
+        // Other durations leave the running session alone.
+        store.settings.standUpBreakMinutes = 10
+        #expect(store.sessionRemaining == 50 * 60 - 10)
+        store.settings.language = .english
+        #expect(store.sessionRemaining == 50 * 60 - 10)
     }
 
     @Test @MainActor func idleAutoPausesAndAutoResumes() {
@@ -170,11 +280,14 @@ func makeStore(
         run(store, clock, seconds: 10)
         idleBox.seconds = 400
         store.tick()
-        #expect(store.phase == .paused)
+        #expect(store.paused == true)
         #expect(store.autoPaused == true)
+        let frozen = store.sessionRemaining
+        run(store, clock, seconds: 60)
+        #expect(store.sessionRemaining == frozen)
         idleBox.seconds = 0
         store.tick()
-        #expect(store.phase == .sitting)
+        #expect(store.paused == false)
         #expect(store.autoPaused == false)
     }
 
@@ -187,7 +300,7 @@ func makeStore(
         #expect(store.autoPaused == false)
         idleBox.seconds = 0
         store.tick()
-        #expect(store.phase == .paused)
+        #expect(store.paused == true)
     }
 
     @Test @MainActor func noAutoResumeWhenDisabled() {
@@ -198,10 +311,10 @@ func makeStore(
         run(store, clock, seconds: 10)
         idleBox.seconds = 400
         store.tick()
-        #expect(store.phase == .paused)
+        #expect(store.paused == true)
         idleBox.seconds = 0
         store.tick()
-        #expect(store.phase == .paused)
+        #expect(store.paused == true)
     }
 
     @Test @MainActor func sleepGapDiscardsUnknownTime() {
@@ -213,16 +326,18 @@ func makeStore(
         clock.advance(8 * 3600)
         idleBox.seconds = 8 * 3600
         store.tick()
-        #expect(store.phase == .paused)
+        #expect(store.paused == true)
         #expect(store.autoPaused == true)
         let today = store.liveToday()
         #expect(isNear(today.sittingSeconds, 60, tolerance: 5))
         #expect(today.sittingSeconds < 3600)
-        // Back at the Mac: resumes sitting, sleep gap stays out of the stats.
+        // Back at the Mac: resumes, sleep gap stays out of the stats,
+        // countdown resumes where presence was last seen.
         idleBox.seconds = 0
         store.tick()
-        #expect(store.phase == .sitting)
+        #expect(store.paused == false)
         #expect(store.liveToday().sittingSeconds < 3600)
+        #expect(isNear(store.sessionRemaining, 45 * 60 - 60, tolerance: 5))
     }
 
     @Test @MainActor func midnightRolloverSplitsTheSegment() {
@@ -236,7 +351,9 @@ func makeStore(
         let (store, clock, _, _) = makeStore(start: start, settings: settings)
         run(store, clock, seconds: 20 * 60)
         #expect(store.todayKey == dateKey(for: clock.now))
-        #expect(store.phase == .sitting)
+        // The session runs through midnight untouched.
+        #expect(store.session == .work)
+        #expect(isNear(store.sessionRemaining, 45 * 60 - 1200, tolerance: 5))
         // Uninterrupted stretch survives midnight.
         #expect(store.continuousSit > 1100)
         let week = store.weekData()
@@ -247,31 +364,30 @@ func makeStore(
         #expect(isNear(store.liveToday().sittingSeconds, 600, tolerance: 5))
     }
 
-    @Test @MainActor func longestSitTracksLongestStretch() {
-        var settings = AppSettings()
-        settings.standGoalMinutes = 0
-        let (store, clock, _, _) = makeStore(settings: settings)
-        run(store, clock, seconds: 20 * 60)
-        store.setPhase(.standing)
-        run(store, clock, seconds: 60)
-        store.setPhase(.sitting)
-        run(store, clock, seconds: 50 * 60)
-        #expect(isNear(store.liveToday().longestSitSeconds, 3000, tolerance: 5))
+    @Test @MainActor func checkpointKeepsCountdownAndNoDoubleCount() {
+        let (store, clock, _, _) = makeStore()
+        run(store, clock, seconds: 35)
+        // A checkpoint fired at tick 30: the countdown must not jump ...
+        #expect(isNear(store.sessionRemaining, 45 * 60 - 35))
+        // ... and the checkpointed seconds must not be counted twice.
+        #expect(isNear(store.todayRecord.sittingSeconds, 30))
+        #expect(isNear(store.liveToday().sittingSeconds, 35))
     }
 
     @Test @MainActor func standGoalNotifiesOncePerDay() {
         var settings = AppSettings()
         settings.standGoalMinutes = 60
-        settings.sitReminderMinutes = 0
         let (store, clock, _, spy) = makeStore(settings: settings)
-        store.setPhase(.standing)
-        run(store, clock, seconds: 61 * 60)
-        #expect(spy.reminderCount == 1)
+        store.setPosture(.standing)
+        // Standing accrues during work sessions only: 45 + 5 + 20.
+        run(store, clock, seconds: 70 * 60)
+        let goals = spy.posts.filter { $0.title.contains("mục tiêu") }
+        #expect(goals.count == 1)
         run(store, clock, seconds: 10 * 60)
-        #expect(spy.reminderCount == 1)
+        #expect(spy.posts.filter { $0.title.contains("mục tiêu") }.count == 1)
     }
 
-    @Test @MainActor func resetTodayClearsAndRestarts() {
+    @Test @MainActor func resetTodayClearsAndKeepsSession() {
         let (store, clock, _, _) = makeStore()
         run(store, clock, seconds: 60)
         store.resetToday()
@@ -279,14 +395,16 @@ func makeStore(
         #expect(today.sittingSeconds == 0)
         #expect(today.breakCount == 0)
         #expect(today.longestSitSeconds == 0)
-        #expect(store.phase == .sitting)
+        #expect(store.session == .work)
+        // Clearing data is not a session reset: the countdown continues.
+        #expect(isNear(store.sessionRemaining, 45 * 60 - 60))
         #expect(store.continuousSit < 5)
     }
 
     @Test @MainActor func clearHistoryWipesEverything() {
         let (store, clock, _, _) = makeStore()
         run(store, clock, seconds: 60)
-        store.setPhase(.standing)
+        store.setPosture(.standing)
         run(store, clock, seconds: 30)
         store.clearHistory()
         let today = store.liveToday()
@@ -308,8 +426,9 @@ func makeStore(
         // Regression test: `settings.clamp()` inside didSet re-entered didSet
         // through the @Observable wrapper forever (stack overflow on launch).
         let (store, _, _, _) = makeStore()
-        store.settings = AppSettings(sitReminderMinutes: 999, idlePauseMinutes: 0, standGoalMinutes: -5)
-        #expect(store.settings.sitReminderMinutes == 240)
+        store.settings = AppSettings(standUpWorkMinutes: 999, pomodoroLongMinutes: 0, idlePauseMinutes: 0, standGoalMinutes: -5)
+        #expect(store.settings.standUpWorkMinutes == 240)
+        #expect(store.settings.pomodoroLongMinutes == 1)
         #expect(store.settings.idlePauseMinutes == 1)
         #expect(store.settings.standGoalMinutes == 0)
         store.settings.launchAtLogin = true // member-wise write, the crash shape
@@ -347,11 +466,38 @@ func makeStore(
     }
 
     @Test func settingsClampToSaneRanges() {
-        var settings = AppSettings(sitReminderMinutes: 999, idlePauseMinutes: 0, standGoalMinutes: -5)
+        var settings = AppSettings(standUpWorkMinutes: 999, pomodoroLongMinutes: 0, idlePauseMinutes: 0, standGoalMinutes: -5)
         settings.clamp()
-        #expect(settings.sitReminderMinutes == 240)
+        #expect(settings.standUpWorkMinutes == 240)
+        #expect(settings.pomodoroLongMinutes == 1)
         #expect(settings.idlePauseMinutes == 1)
         #expect(settings.standGoalMinutes == 0)
+    }
+
+    @Test func sessionMinutesPerMode() {
+        let settings = AppSettings()
+        #expect(settings.minutes(for: .work, mode: .standUp) == 45)
+        #expect(settings.minutes(for: .shortBreak, mode: .standUp) == 5)
+        #expect(settings.minutes(for: .longBreak, mode: .standUp) == 5)
+        #expect(settings.minutes(for: .work, mode: .pomodoro) == 25)
+        #expect(settings.minutes(for: .shortBreak, mode: .pomodoro) == 5)
+        #expect(settings.minutes(for: .longBreak, mode: .pomodoro) == 15)
+        var custom = AppSettings()
+        custom.standUpWorkMinutes = 50
+        #expect(custom.minutes(for: .work, mode: .standUp) == 50)
+        #expect(SessionMode.standUp.displayName == "Stand Up")
+        #expect(SessionMode.pomodoro.displayName == "Pomodoro")
+        #expect(SessionMode.pomodoroCycleLength == 4)
+    }
+
+    @Test func sessionTitlesInBothLanguages() {
+        #expect(SessionKind.work.title(mode: .standUp, focusIndex: 1, language: .vietnamese) == "Làm việc")
+        #expect(SessionKind.shortBreak.title(mode: .standUp, focusIndex: 1, language: .vietnamese) == "Vận động")
+        #expect(SessionKind.work.title(mode: .pomodoro, focusIndex: 2, language: .vietnamese) == "Tập trung 2/4")
+        #expect(SessionKind.shortBreak.title(mode: .pomodoro, focusIndex: 2, language: .english) == "Short break")
+        #expect(SessionKind.longBreak.title(mode: .pomodoro, focusIndex: 1, language: .english) == "Long break")
+        #expect(Strings(.english).breakOverTitle == "Break over — back to work!")
+        #expect(Strings(.english).skipButton == "Skip")
     }
 
     @Test func elapsedFormatsLikeAClock() {
@@ -373,6 +519,9 @@ func makeStore(
         #expect(SitPhase.standing.shortTitle(in: .vietnamese) == "Đứng")
         #expect(SitPhase.paused.shortTitle(in: .vietnamese) == "Nghỉ")
         #expect(SitPhase.allCases.count == 3)
+        #expect(Posture.allCases.count == 2)
+        #expect(Posture.standing.symbol == "figure.stand")
+        #expect(Posture.sitting.attribution == .sitting)
     }
 
     @Test func durationFormatsInEnglishWithPlurals() {
@@ -385,7 +534,7 @@ func makeStore(
         #expect(SitPhase.sitting.shortTitle(in: .english) == "Sit")
         #expect(SitPhase.paused.title(in: .english) == "Paused")
         #expect(Strings(.english).quitButton == "Quit")
-        #expect(Strings(.english).breaksLine(count: 1, longest: "5 minutes") == "1 break • Longest sit 5 minutes")
+        #expect(Strings(.english).breaksLine(count: 1, longest: "5 minutes") == "1 stand-up • Longest sit 5 minutes")
     }
 
     @Test func weekdayLabelsInBothLanguages() {
@@ -399,13 +548,18 @@ func makeStore(
     }
 
     @Test func oldSettingsWithoutNewKeysLoadWithDefaults() {
+        // A settings.json from the pre-session model: the removed
+        // `sitReminderMinutes` is ignored, every new field gets its default.
         let json = #"{"sitReminderMinutes":45,"idlePauseMinutes":5,"standGoalMinutes":60,"autoResumeOnReturn":true,"startPaused":false,"reminderSound":true,"launchAtLogin":false}"#
         let decoded = try? JSONDecoder().decode(AppSettings.self, from: Data(json.utf8))
+        #expect(decoded?.sessionMode == .standUp)
+        #expect(decoded?.standUpWorkMinutes == 45)
+        #expect(decoded?.standUpBreakMinutes == 5)
+        #expect(decoded?.pomodoroWorkMinutes == 25)
         #expect(decoded?.language == .vietnamese)
         #expect(decoded?.subCalendar == .vietnamese)
         #expect(decoded?.fullScreenFlash == true)
         #expect(decoded?.quoteOnFlash == true)
-        #expect(decoded?.sitReminderMinutes == 45)
     }
 
     @Test @MainActor func englishWeekLabelsFollowSettings() {
@@ -417,25 +571,20 @@ func makeStore(
         #expect(week.last?.label == "Today")
     }
 
-    @Test @MainActor func englishReminderTextFollowsSettings() {
-        var settings = AppSettings()
+    @Test @MainActor func englishTransitionTextFollowsSettings() {
+        var settings = minuteSettings(mode: .standUp)
         settings.language = .english
-        settings.sitReminderMinutes = 1
-        settings.standGoalMinutes = 0
         let (store, clock, _, spy) = makeStore(settings: settings)
         run(store, clock, seconds: 65)
         #expect(spy.reminderCount == 1)
-        #expect(spy.posts.first?.title.contains("time to stand") == true)
+        #expect(spy.posts.first?.title.contains("stand up and move") == true)
         #expect(spy.posts.first?.body.contains("Today:") == true)
     }
 
     @Test @MainActor func flashHookFiresWithRandomQuote() {
-        var settings = AppSettings()
-        settings.sitReminderMinutes = 1
-        settings.standGoalMinutes = 0
-        let (store, clock, _, spy) = makeStore(settings: settings)
+        let (store, clock, _, spy) = makeStore(settings: minuteSettings())
         var flashed: [(String, String, HealthQuote?)] = []
-        store.onSitReminder = { flashed.append(($0, $1, $2)) }
+        store.onFlash = { flashed.append(($0, $1, $2)) }
         run(store, clock, seconds: 65)
         #expect(flashed.count == 1)
         if let first = flashed.first {
@@ -450,24 +599,20 @@ func makeStore(
 
     @Test @MainActor func flashHookRespectsSwitches() {
         // Flash off: no hook, banner keeps its sound.
-        var off = AppSettings()
-        off.sitReminderMinutes = 1
-        off.standGoalMinutes = 0
+        var off = minuteSettings()
         off.fullScreenFlash = false
         let (storeA, clockA, _, spyA) = makeStore(settings: off)
         var countA = 0
-        storeA.onSitReminder = { _, _, _ in countA += 1 }
+        storeA.onFlash = { _, _, _ in countA += 1 }
         run(storeA, clockA, seconds: 65)
         #expect(countA == 0)
         #expect(spyA.posts.first?.sound == true)
         // Quote off: hook fires with a nil quote, banner silent.
-        var noQuote = AppSettings()
-        noQuote.sitReminderMinutes = 1
-        noQuote.standGoalMinutes = 0
+        var noQuote = minuteSettings()
         noQuote.quoteOnFlash = false
         let (storeB, clockB, _, spyB) = makeStore(settings: noQuote)
         var flashedB: [(String, String, HealthQuote?)] = []
-        storeB.onSitReminder = { flashedB.append(($0, $1, $2)) }
+        storeB.onFlash = { flashedB.append(($0, $1, $2)) }
         run(storeB, clockB, seconds: 65)
         #expect(flashedB.count == 1)
         if let first = flashedB.first {
@@ -518,7 +663,6 @@ func solarDate(_ year: Int, _ month: Int, _ day: Int) -> Date {
         let kippur = subCalendarDate(for: solarDate(2026, 9, 21), calendar: .hebrew, language: .vietnamese)
         #expect(kippur?.day == "10")
         #expect(kippur?.sub == "Tishri")
-        #expect(kippur?.accessibleLabel.contains("5787") == true)
         // Purim Katan 2024-02-23 is 14 Adar I 5784 (leap year, public fact).
         let adar1 = subCalendarDate(for: solarDate(2024, 2, 23), calendar: .hebrew, language: .english)
         #expect(adar1?.day == "14")

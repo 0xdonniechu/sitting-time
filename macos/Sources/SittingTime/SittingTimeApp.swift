@@ -16,6 +16,8 @@ struct SittingTimeApp: App {
         // MenuBarExtra's label renders once and never updates, and driving it
         // with TimelineView livelocks the main thread (verified by bisect:
         // TimelineView builds never tick, non-TimelineView builds do).
+        // The Settings scene stays for the Scene body (and Cmd-,); the
+        // popover button opens a manual panel instead (see showSettings).
         Settings {
             SettingsView()
                 .environment(appDelegate.store)
@@ -30,6 +32,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem?
     private var popover: NSPopover?
     private var statsPanel: NSPanel?
+    private var settingsPanel: NSPanel?
     private let flashCenter = FlashCenter()
     private var lockFD: Int32 = -1
     private var isDuplicate = false
@@ -70,11 +73,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
             item.button?.action = #selector(togglePopover(_:))
             item.button?.target = self
+            // Monospaced digits: with proportional figures the variable-length
+            // item resizes every second, jittering the menu bar clock.
+            if let size = item.button?.font?.pointSize {
+                item.button?.font = NSFont.monospacedDigitSystemFont(ofSize: size, weight: .regular)
+            }
             statusItem = item
             let popover = NSPopover()
             popover.contentViewController = NSHostingController(
-                rootView: MenuBarView(openStats: { [weak self] in self?.showStats() })
-                    .environment(store)
+                rootView: MenuBarView(
+                    openStats: { [weak self] in self?.showStats() },
+                    openSettings: { [weak self] in self?.showSettings() }
+                )
+                .environment(store)
             )
             popover.behavior = .transient
             popover.animates = true
@@ -83,7 +94,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // SwiftUI views observe the store through .environment instead.
             store.onTick = { [weak self] in self?.refreshStatusItem() }
             // The flash hook fires on the main actor from tick(), like onTick.
-            store.onSitReminder = { [weak self] title, body, quote in
+            store.onFlash = { [weak self] title, body, quote in
                 MainActor.assumeIsolated {
                     guard let self else { return }
                     self.flashCenter.show(
@@ -127,7 +138,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         MainActor.assumeIsolated {
             guard let popover else { return }
             if popover.isShown {
-                popover.performClose(nil)
+                popover.close()
             } else {
                 showPopover()
             }
@@ -168,10 +179,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.activate()
     }
 
+    private func showSettings() {
+        // Manual panel like showStats: the Settings scene's
+        // showSettingsWindow: never fires from the popover while the app is
+        // inactive, so the button goes through this closure instead.
+        if settingsPanel == nil {
+            let panel = NSPanel(
+                contentRect: NSRect(x: 0, y: 0, width: 480, height: 640),
+                styleMask: [.titled, .closable, .resizable],
+                backing: .buffered, defer: false
+            )
+            panel.level = .floating
+            panel.hidesOnDeactivate = false
+            panel.contentViewController = NSHostingController(rootView: SettingsView().environment(store))
+            panel.isReleasedWhenClosed = false
+            panel.center()
+            settingsPanel = panel
+        }
+        settingsPanel?.title = Strings(store.settings.language).settingsPanelTitle
+        settingsPanel?.makeKeyAndOrderFront(nil)
+        NSApp.activate()
+    }
+
     private func refreshStatusItem() {
         guard let button = statusItem?.button else { return }
-        button.title = store.menuElapsed
-        let image = NSImage(systemSymbolName: store.phase.symbol, accessibilityDescription: store.phase.title(in: store.settings.language))
+        button.title = store.menuCountdown
+        let image = NSImage(systemSymbolName: store.statusSymbol, accessibilityDescription: store.statusTitle)
         image?.isTemplate = true
         button.image = image
         button.imagePosition = .imageLeading

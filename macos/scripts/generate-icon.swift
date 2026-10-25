@@ -40,11 +40,11 @@ func drawMaster() -> NSImage {
     return image
 }
 
-// Coordinates are bottom-left (drawing space); getPixel is top-left Int samples.
-func pixel(_ bitmap: NSBitmapImageRep, _ x: Int, _ y: Int) -> (r: CGFloat, g: CGFloat, b: CGFloat, a: CGFloat) {
-    var p = [Int](repeating: 0, count: 5)
-    bitmap.getPixel(&p, atX: x, y: bitmap.pixelsHigh - 1 - y)
-    return (CGFloat(p[0]) / 255, CGFloat(p[1]) / 255, CGFloat(p[2]) / 255, CGFloat(p[3]) / 255)
+// Coordinates are bottom-left (drawing space); the flattened bytes below
+// are top-left, hence the row flip.
+func pixel(_ bytes: Data, _ w: Int, _ h: Int, _ x: Int, _ y: Int) -> (r: CGFloat, g: CGFloat, b: CGFloat, a: CGFloat) {
+    let o = ((h - 1 - y) * w + x) * 4
+    return (CGFloat(bytes[o]) / 255, CGFloat(bytes[o + 1]) / 255, CGFloat(bytes[o + 2]) / 255, CGFloat(bytes[o + 3]) / 255)
 }
 
 func check(_ name: String, _ ok: Bool) {
@@ -55,23 +55,41 @@ func check(_ name: String, _ ok: Bool) {
 }
 
 let master = drawMaster()
+// Flatten to explicit 8-bit sRGB bytes: lockFocus/tiffRepresentation bit depth
+// follows the environment (16-bit with display access, 8-bit without), and
+// getPixel on a 16-bit rep returns garbage, so never sample it directly.
 guard let tiff = master.tiffRepresentation,
-      let bitmap = NSBitmapImageRep(data: tiff) else {
+      let src = CGImageSourceCreateWithData(tiff as CFData, nil),
+      let cg = CGImageSourceCreateImageAtIndex(src, 0, nil),
+      let cs = CGColorSpace(name: CGColorSpace.sRGB) else {
     fputs("generate-icon: cannot rasterize master image\n", stderr)
     exit(1)
 }
-let n = Int(masterSize)
+let w = cg.width, h = cg.height
+guard let ctx = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4,
+                          space: cs, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else {
+    fputs("generate-icon: cannot create 8-bit context\n", stderr)
+    exit(1)
+}
+ctx.draw(cg, in: CGRect(x: 0, y: 0, width: w, height: h))
+guard let flat = ctx.makeImage(),
+      let cfData = flat.dataProvider?.data else {
+    fputs("generate-icon: cannot read back pixels\n", stderr)
+    exit(1)
+}
+let bytes = cfData as Data
+let n = w
 // Chair backrest centre must be near-white.
-let chair = pixel(bitmap, Int(0.40 * CGFloat(n)), Int(0.50 * CGFloat(n)))
+let chair = pixel(bytes, w, h, Int(0.40 * CGFloat(n)), Int(0.50 * CGFloat(n)))
 check("chair", chair.r > 0.9 && chair.g > 0.9 && chair.b > 0.9 && chair.a > 0.9)
 // Sky area must be dark teal, opaque.
-let sky = pixel(bitmap, Int(0.50 * CGFloat(n)), Int(0.88 * CGFloat(n)))
+let sky = pixel(bytes, w, h, Int(0.50 * CGFloat(n)), Int(0.88 * CGFloat(n)))
 check("sky", sky.r < 0.25 && sky.g > 0.3 && sky.b > 0.3 && sky.a > 0.9)
 // Dot centre must be orange.
-let dot = pixel(bitmap, Int(0.74 * CGFloat(n)), Int(0.72 * CGFloat(n)))
+let dot = pixel(bytes, w, h, Int(0.74 * CGFloat(n)), Int(0.72 * CGFloat(n)))
 check("dot", dot.r > 0.85 && dot.g > 0.3 && dot.g < 0.6 && dot.b < 0.25)
 // Extreme corner must be transparent (rounded rect).
-let corner = pixel(bitmap, 4, 4)
+let corner = pixel(bytes, w, h, 4, 4)
 check("corner", corner.a < 0.1)
 
 // Render PNGs at every pixel size a modern .icns carries.

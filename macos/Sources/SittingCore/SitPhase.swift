@@ -1,12 +1,13 @@
 import Foundation
 
-/// The three mutually exclusive states of the user.
+/// Attribution buckets for records: where counted seconds land. Sessions and
+/// posture decide the bucket (see `Posture`); the store never parks in these.
 public enum SitPhase: String, Codable, Sendable, CaseIterable {
-    /// User is sitting (working at the desk).
+    /// Working seated at the desk.
     case sitting
-    /// User is standing (standing desk / walking around).
+    /// Working upright (standing desk).
     case standing
-    /// Tracking is paused: manual break or auto-pause (idle / Mac asleep).
+    /// Rest: session breaks, manual pauses, idle auto-pauses.
     case paused
 
     /// Short label used in the menu bar and buttons. Delegates to `Strings`,
