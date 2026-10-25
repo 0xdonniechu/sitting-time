@@ -30,6 +30,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem?
     private var popover: NSPopover?
     private var statsPanel: NSPanel?
+    private let flashCenter = FlashCenter()
     private var lockFD: Int32 = -1
     private var isDuplicate = false
     /// Held for the app's lifetime: the 1 s timer is user-initiated work,
@@ -81,6 +82,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // The tick hook refreshes the AppKit label out-of-band; the hosted
             // SwiftUI views observe the store through .environment instead.
             store.onTick = { [weak self] in self?.refreshStatusItem() }
+            // The flash hook fires on the main actor from tick(), like onTick.
+            store.onSitReminder = { [weak self] title, body, quote in
+                MainActor.assumeIsolated {
+                    guard let self else { return }
+                    self.flashCenter.show(
+                        title: title,
+                        message: body,
+                        quote: quote,
+                        language: self.store.settings.language,
+                        sound: self.store.settings.reminderSound
+                    )
+                }
+            }
             refreshStatusItem()
             Task { @MainActor in
                 _ = await store.requestNotificationAccess()
@@ -144,12 +158,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             )
             panel.level = .floating
             panel.hidesOnDeactivate = false
-            panel.title = "Thống kê 7 ngày"
             panel.contentViewController = NSHostingController(rootView: StatsView().environment(store))
             panel.isReleasedWhenClosed = false
             panel.center()
             statsPanel = panel
         }
+        statsPanel?.title = Strings(store.settings.language).statsPanelTitle
         statsPanel?.makeKeyAndOrderFront(nil)
         NSApp.activate()
     }
@@ -157,7 +171,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func refreshStatusItem() {
         guard let button = statusItem?.button else { return }
         button.title = store.menuElapsed
-        let image = NSImage(systemSymbolName: store.phase.symbol, accessibilityDescription: store.phase.title)
+        let image = NSImage(systemSymbolName: store.phase.symbol, accessibilityDescription: store.phase.title(in: store.settings.language))
         image?.isTemplate = true
         button.image = image
         button.imagePosition = .imageLeading

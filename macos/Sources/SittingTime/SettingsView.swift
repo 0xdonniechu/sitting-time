@@ -13,49 +13,66 @@ struct SettingsView: View {
 
     var body: some View {
         @Bindable var store = store
+        let lang = store.settings.language
+        let strings = Strings(lang)
         Form {
-            Section("Nhắc nhở đứng dậy") {
+            Section(strings.reminderSection) {
                 Stepper(
                     store.settings.sitReminderMinutes == 0
-                        ? "Tắt nhắc nhở"
-                        : "Mỗi \(store.settings.sitReminderMinutes) phút ngồi liên tục",
+                        ? strings.reminderOff
+                        : strings.reminderEvery(minutes: store.settings.sitReminderMinutes),
                     value: $store.settings.sitReminderMinutes, in: 0...240, step: 5
                 )
-                Toggle("Âm thanh nhắc nhở", isOn: $store.settings.reminderSound)
+                Toggle(strings.soundToggle, isOn: $store.settings.reminderSound)
+                Toggle(strings.flashToggle, isOn: $store.settings.fullScreenFlash)
+                Toggle(strings.quoteToggle, isOn: $store.settings.quoteOnFlash)
                 HStack {
-                    Text("Quyền gửi nhắc nhở")
+                    Text(strings.permissionRow)
                     Spacer()
-                    Text(notificationsOn == true ? "Đã bật" : "Chưa bật")
+                    Text(notificationsOn == true ? strings.permissionOn : strings.permissionOff)
                         .foregroundStyle(.secondary)
                 }
                 HStack {
-                    Button("Xin quyền") {
+                    Button(strings.requestButton) {
                         Task { notificationsOn = await store.requestNotificationAccess() }
                     }
-                    Button("Mở Cài đặt hệ thống") { openNotificationSettings() }
+                    Button(strings.openSystemButton) { openNotificationSettings() }
                 }
             }
 
-            Section("Tự động") {
+            Section(strings.autoSection) {
                 Stepper(
-                    "Tự tạm nghỉ sau \(store.settings.idlePauseMinutes) phút không dùng máy",
+                    strings.idleTitle(minutes: store.settings.idlePauseMinutes),
                     value: $store.settings.idlePauseMinutes, in: 1...60
                 )
-                Toggle("Tự tiếp tục khi quay lại", isOn: $store.settings.autoResumeOnReturn)
-                Toggle("Mở app ở trạng thái Tạm nghỉ", isOn: $store.settings.startPaused)
+                Toggle(strings.resumeToggle, isOn: $store.settings.autoResumeOnReturn)
+                Toggle(strings.startPausedToggle, isOn: $store.settings.startPaused)
             }
 
-            Section("Mục tiêu") {
+            Section(strings.goalSection) {
                 Stepper(
                     store.settings.standGoalMinutes == 0
-                        ? "Không đặt mục tiêu đứng"
-                        : "Đứng \(formatDuration(TimeInterval(store.settings.standGoalMinutes * 60))) mỗi ngày",
+                        ? strings.goalOff
+                        : strings.goalOn(formatDuration(TimeInterval(store.settings.standGoalMinutes * 60), language: lang)),
                     value: $store.settings.standGoalMinutes, in: 0...600, step: 15
                 )
             }
 
-            Section("Hệ thống") {
-                Toggle("Mở cùng máy", isOn: Binding(
+            Section(strings.displaySection) {
+                Picker(strings.languageLabel, selection: $store.settings.language) {
+                    ForEach(AppLanguage.allCases, id: \.self) { option in
+                        Text(option.displayName).tag(option)
+                    }
+                }
+                Picker(strings.calendarLabel, selection: $store.settings.subCalendar) {
+                    ForEach(SubCalendar.allCases, id: \.self) { option in
+                        Text(strings.calendarName(option)).tag(option)
+                    }
+                }
+            }
+
+            Section(strings.systemSection) {
+                Toggle(strings.loginToggle, isOn: Binding(
                     get: { store.settings.launchAtLogin },
                     set: { setLaunchAtLogin($0) }
                 ))
@@ -66,14 +83,14 @@ struct SettingsView: View {
                 }
             }
 
-            Section("Dữ liệu") {
-                Button("Mở thư mục dữ liệu") { revealDataFolder() }
-                Button("Xóa dữ liệu hôm nay") { confirmResetToday = true }
-                Button("Xóa toàn bộ lịch sử", role: .destructive) { confirmClearAll = true }
+            Section(strings.dataSection) {
+                Button(strings.revealButton) { revealDataFolder() }
+                Button(strings.resetTodayButton) { confirmResetToday = true }
+                Button(strings.clearAllButton, role: .destructive) { confirmClearAll = true }
             }
 
             Section {
-                Text("SittingTime \(AppInfo.version) • Dữ liệu chỉ nằm trên máy này, không mạng, không tài khoản.")
+                Text(strings.footerNote(version: AppInfo.version))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -81,16 +98,16 @@ struct SettingsView: View {
         .formStyle(.grouped)
         .frame(width: 440)
         .confirmationDialog(
-            "Xóa dữ liệu hôm nay?", isPresented: $confirmResetToday, titleVisibility: .visible
+            strings.resetTodayDialog, isPresented: $confirmResetToday, titleVisibility: .visible
         ) {
-            Button("Xóa", role: .destructive) { store.resetToday() }
-            Button("Giữ lại", role: .cancel) {}
+            Button(strings.deleteButton, role: .destructive) { store.resetToday() }
+            Button(strings.keepButton, role: .cancel) {}
         }
         .confirmationDialog(
-            "Xóa toàn bộ lịch sử?", isPresented: $confirmClearAll, titleVisibility: .visible
+            strings.clearAllDialog, isPresented: $confirmClearAll, titleVisibility: .visible
         ) {
-            Button("Xóa hết", role: .destructive) { store.clearHistory() }
-            Button("Giữ lại", role: .cancel) {}
+            Button(strings.deleteAllButton, role: .destructive) { store.clearHistory() }
+            Button(strings.keepButton, role: .cancel) {}
         }
         .task {
             notificationsOn = await store.notificationAuthorized()
@@ -104,7 +121,7 @@ struct SettingsView: View {
             try LoginItemManager.setEnabled(enabled)
             store.settings.launchAtLogin = enabled
         } catch {
-            loginError = "Không đặt được — mục này chỉ dùng khi chạy từ file .app: \(error.localizedDescription)"
+            loginError = Strings(store.settings.language).loginError(error.localizedDescription)
             store.settings.launchAtLogin = LoginItemManager.isEnabled
         }
     }

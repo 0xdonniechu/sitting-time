@@ -9,22 +9,15 @@ public enum SitPhase: String, Codable, Sendable, CaseIterable {
     /// Tracking is paused: manual break or auto-pause (idle / Mac asleep).
     case paused
 
-    /// Short label used in the menu bar and buttons.
-    public var shortTitle: String {
-        switch self {
-        case .sitting: return "Ngồi"
-        case .standing: return "Đứng"
-        case .paused: return "Nghỉ"
-        }
+    /// Short label used in the menu bar and buttons. Delegates to `Strings`,
+    /// the single table for user-visible text.
+    public func shortTitle(in language: AppLanguage) -> String {
+        Strings(language).phaseShort(self)
     }
 
     /// Full label used in headings.
-    public var title: String {
-        switch self {
-        case .sitting: return "Đang ngồi"
-        case .standing: return "Đang đứng"
-        case .paused: return "Tạm nghỉ"
-        }
+    public func title(in language: AppLanguage) -> String {
+        Strings(language).phaseTitle(self)
     }
 
     /// SF Symbol shown in the menu bar and UI. All three exist since SF Symbols 4.
