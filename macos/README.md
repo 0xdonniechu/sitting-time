@@ -38,6 +38,7 @@ Yêu cầu: macOS 14+, Xcode (Swift 6).
 ```bash
 ./scripts/build-app.sh   # test + build release 0 warning + vẽ icon + ráp .app (ad-hoc signed)
 open dist/SittingTime.app
+./scripts/build-dmg.sh   # build-app.sh + gói dist/SittingTime.dmg (kéo-thả vào Applications)
 ```
 
 Chạy dev thô (`swift run`) vẫn được nhưng sẽ hiện dock icon vì thiếu bundle;
@@ -90,6 +91,7 @@ Sources/SittingTime/             # SwiftUI: menu bar, popover, thống kê (Char
   FlashCenter.swift              # cửa sổ nháy đen toàn màn hình + thẻ tin nhắn/quote
 Tests/SittingTimeTests/          # 41 test với FakeClock/FakeIdle/SpyNotify
 scripts/build-app.sh             # test → release → icon → ráp + ký .app
+scripts/build-dmg.sh             # build-app.sh + gói .dmg kéo-thả vào Applications
 scripts/generate-icon.swift      # vẽ icon + tự kiểm tra + ráp .icns thủ công
 Resources/Info.plist             # LSUIElement, id com.0xdonniechu.sittingtime
 ```
