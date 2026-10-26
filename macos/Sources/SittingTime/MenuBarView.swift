@@ -152,7 +152,10 @@ struct MenuBarView: View {
                     .foregroundStyle(.white)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 3)
-                    .background(Capsule().fill(Color.accentColor))
+                    // Milky-coffee brown.
+                    .background(Capsule().fill(Color(
+                        red: 0x9E / 255, green: 0x70 / 255, blue: 0x4A / 255
+                    )))
                     .fixedSize(horizontal: true, vertical: false)
                 }
                 .help("Buy me a coffee")
