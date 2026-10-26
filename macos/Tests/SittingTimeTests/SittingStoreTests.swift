@@ -177,7 +177,7 @@ func installVietnamesePackForTests() {
         #expect(store.session == .work)
         #expect(spy.reminderCount == 2)
         #expect(store.liveToday().breakCount == 1)
-        #expect(spy.posts.last?.title == "Break over — back to work!")
+        #expect(spy.posts.last?.title == "Break over, back to work!")
     }
 
     @Test @MainActor func standUpCycleRepeats() {
@@ -675,6 +675,17 @@ func installVietnamesePackForTests() {
         #expect(settings.standGoalMinutes == 0)
     }
 
+    @Test func pinPopoverDefaultsOffAndRoundTrips() {
+        #expect(AppSettings().pinPopover == false)
+        // Settings saved before the field existed decode with pin off.
+        let old = try! JSONDecoder().decode(AppSettings.self, from: Data("{}".utf8))
+        #expect(old.pinPopover == false)
+        var custom = AppSettings()
+        custom.pinPopover = true
+        let back = try! JSONDecoder().decode(AppSettings.self, from: JSONEncoder().encode(custom))
+        #expect(back.pinPopover == true)
+    }
+
     @Test func sessionMinutesPerMode() {
         let settings = AppSettings()
         #expect(settings.minutes(for: .work, mode: .standUp) == 45)
@@ -698,7 +709,7 @@ func installVietnamesePackForTests() {
         #expect(SessionKind.work.title(mode: .pomodoro, focusIndex: 2, language: .vietnamese) == "Tập trung 2/4")
         #expect(SessionKind.shortBreak.title(mode: .pomodoro, focusIndex: 2, language: .english) == "Short break")
         #expect(SessionKind.longBreak.title(mode: .pomodoro, focusIndex: 1, language: .english) == "Long break")
-        #expect(Strings(.english).breakOverTitle == "Break over — back to work!")
+        #expect(Strings(.english).breakOverTitle == "Break over, back to work!")
         #expect(Strings(.english).skipButton == "Skip")
     }
 
@@ -1079,6 +1090,7 @@ func solarDate(_ year: Int, _ month: Int, _ day: Int) -> Date {
         "permissionOff",
         "permissionOn",
         "permissionRow",
+        "pinPopoverToggle",
         "phaseShort.paused",
         "phaseShort.sitting",
         "phaseShort.standing",
@@ -1159,6 +1171,8 @@ func solarDate(_ year: Int, _ month: Int, _ day: Int) -> Date {
         #expect(strings.language == .vietnamese)
         #expect(strings.pauseButton == "Tạm nghỉ")
         #expect(strings.settingsButton == "Cài đặt")
+        #expect(strings.pinPopoverToggle == "Ghim popover")
+        #expect(strings.displaySection == "Hiển thị")
         #expect(strings.goalProgress("1 giờ") == "Mục tiêu đứng 1 giờ")
         #expect(strings.breaksLine(count: 1, longest: "5 phút") == "Đứng dậy 1 lần • Ngồi lâu nhất 5 phút")
         #expect(strings.breaksLine(count: 3, longest: "5 phút") == "Đứng dậy 3 lần • Ngồi lâu nhất 5 phút")
@@ -1191,6 +1205,8 @@ func solarDate(_ year: Int, _ month: Int, _ day: Int) -> Date {
         installVietnamesePackForTests()
         #expect(AppSettings().language == .english)
         #expect(Strings(.english).pauseButton == "Pause")
+        #expect(Strings(.english).pinPopoverToggle == "Pin popover")
+        #expect(Strings(.english).displaySection == "Display")
         // Resolved English stays English even with the pack installed.
         #expect(Strings(.english).language == .english)
     }

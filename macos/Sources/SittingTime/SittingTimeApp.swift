@@ -175,6 +175,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     @MainActor
     private func showPopover() {
         guard let button = statusItem?.button, let popover else { return }
+        syncPopoverBehavior()
         if let hostingView = popover.contentViewController?.view as? NSHostingView<MenuBarView> {
             let fit = hostingView.fittingSize
             popover.contentSize = NSSize(
@@ -187,11 +188,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
     }
 
-    /// Hides every visible window the click landed outside of: popover,
-    /// stats, settings, about. Clicks inside a window never touch it.
+    /// Pinned popovers never auto-dismiss: AppKit-level (.applicationDefined)
+    /// plus the global-monitor guard below. Unpinned keeps .transient.
+    /// Re-synced on every open and every outside click so toggling the
+    /// setting applies while the popover is already showing.
+    private func syncPopoverBehavior() {
+        popover?.behavior = store.settings.pinPopover ? .applicationDefined : .transient
+    }
+
+    /// Hides every visible window the click landed outside of: popover
+    /// (unless pinned), stats, settings, about. Clicks inside a window
+    /// never touch it.
     private func dismissWindowsOnOutsideClick() {
+        syncPopoverBehavior()
         let point = NSEvent.mouseLocation
-        if let popover, popover.isShown,
+        if !store.settings.pinPopover,
+           let popover, popover.isShown,
            let frame = popover.contentViewController?.view.window?.frame,
            !frame.contains(point) {
             popover.close()

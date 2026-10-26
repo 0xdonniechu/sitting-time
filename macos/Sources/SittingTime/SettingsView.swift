@@ -130,6 +130,7 @@ struct SettingsView: View {
                         Text(strings.calendarName(option)).tag(option)
                     }
                 }
+                Toggle(strings.pinPopoverToggle, isOn: $store.settings.pinPopover)
             }
 
             Section(strings.systemSection) {

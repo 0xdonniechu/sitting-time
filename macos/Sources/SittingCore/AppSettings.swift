@@ -34,6 +34,8 @@ public struct AppSettings: Codable, Sendable, Equatable {
     public var fullScreenFlash: Bool
     /// Show a random health quote on the flash (20 s instead of 6 s).
     public var quoteOnFlash: Bool
+    /// Keep the menu bar popover open when clicking outside it.
+    public var pinPopover: Bool
 
     public init(
         sessionMode: SessionMode = .standUp,
@@ -51,7 +53,8 @@ public struct AppSettings: Codable, Sendable, Equatable {
         language: AppLanguage = .english,
         subCalendar: SubCalendar = .vietnamese,
         fullScreenFlash: Bool = true,
-        quoteOnFlash: Bool = true
+        quoteOnFlash: Bool = true,
+        pinPopover: Bool = false
     ) {
         self.sessionMode = sessionMode
         self.standUpWorkMinutes = standUpWorkMinutes
@@ -69,6 +72,7 @@ public struct AppSettings: Codable, Sendable, Equatable {
         self.subCalendar = subCalendar
         self.fullScreenFlash = fullScreenFlash
         self.quoteOnFlash = quoteOnFlash
+        self.pinPopover = pinPopover
     }
 
     enum CodingKeys: String, CodingKey {
@@ -76,7 +80,7 @@ public struct AppSettings: Codable, Sendable, Equatable {
         case pomodoroWorkMinutes, pomodoroShortMinutes, pomodoroLongMinutes
         case idlePauseMinutes, standGoalMinutes
         case autoResumeOnReturn, startPaused, reminderSound, launchAtLogin
-        case language, subCalendar, fullScreenFlash, quoteOnFlash
+        case language, subCalendar, fullScreenFlash, quoteOnFlash, pinPopover
     }
 
     /// Every field falls back to its default: a settings.json saved before a
@@ -100,6 +104,7 @@ public struct AppSettings: Codable, Sendable, Equatable {
         subCalendar = try c.decodeIfPresent(SubCalendar.self, forKey: .subCalendar) ?? .vietnamese
         fullScreenFlash = try c.decodeIfPresent(Bool.self, forKey: .fullScreenFlash) ?? true
         quoteOnFlash = try c.decodeIfPresent(Bool.self, forKey: .quoteOnFlash) ?? true
+        pinPopover = try c.decodeIfPresent(Bool.self, forKey: .pinPopover) ?? false
     }
 
     /// Session length in minutes for one kind under one mode.

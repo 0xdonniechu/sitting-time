@@ -54,7 +54,7 @@ public struct Strings: Sendable {
     // MARK: - Popover
 
     public var autoPausedNote: String {
-        t("autoPausedNote", "Auto-paused while you were away — resumes when you return.")
+        t("autoPausedNote", "Auto-paused while you were away. Resumes when you return.")
     }
 
     public var statusPickerLabel: String { t("statusPickerLabel", "Status") }
@@ -208,9 +208,10 @@ public struct Strings: Sendable {
         t("goalOn", "Stand {duration} a day", ["duration": duration])
     }
 
-    public var displaySection: String { t("displaySection", "Language & calendar") }
+    public var displaySection: String { t("displaySection", "Display") }
     public var languageLabel: String { t("languageLabel", "Language") }
     public var calendarLabel: String { t("calendarLabel", "Secondary calendar") }
+    public var pinPopoverToggle: String { t("pinPopoverToggle", "Pin popover") }
 
     // MARK: - Language pack rows
 
@@ -231,7 +232,7 @@ public struct Strings: Sendable {
     public var loginToggle: String { t("loginToggle", "Launch at login") }
 
     public func loginError(_ detail: String) -> String {
-        t("loginError", "Could not set — this only works when running from the .app bundle: {detail}", ["detail": detail])
+        t("loginError", "Could not set. This only works when running from the .app bundle: {detail}", ["detail": detail])
     }
 
     public var dataSection: String { t("dataSection", "Data") }
@@ -270,10 +271,10 @@ public struct Strings: Sendable {
     // MARK: - Notifications
 
     public func workEndTitle(duration: String) -> String {
-        t("workEndTitle", "Work done after {duration} — stand up and move!", ["duration": duration])
+        t("workEndTitle", "Work done after {duration}, stand up and move!", ["duration": duration])
     }
 
-    public var breakOverTitle: String { t("breakOverTitle", "Break over — back to work!") }
+    public var breakOverTitle: String { t("breakOverTitle", "Break over, back to work!") }
 
     public func reminderBody(sitting: String, standing: String) -> String {
         t("reminderBody", "Today: sitting {sitting} • standing {standing}", ["sitting": sitting, "standing": standing])
