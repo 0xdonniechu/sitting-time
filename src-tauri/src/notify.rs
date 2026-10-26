@@ -9,7 +9,7 @@ pub fn session_alert(session: SessionKind, vietnamese: bool) -> (&'static str, &
     if vietnamese {
         return match session {
             SessionKind::Focus => (
-                "Hết giờ nghỉ — vào phiên mới!",
+                "Hết giờ nghỉ, vào phiên mới!",
                 "Sẵn sàng cho phiên tập trung mới",
             ),
             SessionKind::ShortBreak => ("Xong phiên tập trung!", "Nghỉ ngắn một chút cho khỏe"),
