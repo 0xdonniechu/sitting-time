@@ -37,7 +37,10 @@ The project pins Rust `1.96.0` because some Windows systems with Smart App Contr
 - Inter Variable is bundled locally for consistent macOS-inspired typography on Windows.
 - The visible countdown polls Rust snapshots; JavaScript does not calculate elapsed time.
 - Closing the window keeps both the process and timer alive.
-- Settings and active timer state persist to a local `state.json` file.
+- Settings, active timer state and per-day statistics persist to a local `state.json` file.
+- Screen Time-style Statistics (Day/Week, hourly bars, break counts, longest sit) with a configurable daily standing goal.
+- Bilingual UI (English/Vietnamese), About panel, "Buy me a coffee" link, zodiac animal on the calendar tile.
+- Switching Stand Up / Pomodoro keeps the running session.
 - Native session notifications and optional launch-at-login use official Tauri plugins.
 - Optional full-screen reminders provide a brief screen flash, centered session message, and independently configurable alert sound.
 - Full-screen reminders can show a short bilingual (Vietnamese/English) health fact with an emoji; on by default and can be turned off in Settings.

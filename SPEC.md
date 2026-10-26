@@ -7,7 +7,7 @@ The app is a small Windows tray utility with two modes:
 - **Stand Up:** 45 minutes of sitting/work, followed by 5 minutes of movement.
 - **Pomodoro:** 25 minutes of focus, 5 minutes of short break, and a 15-minute long break after four focus sessions.
 
-The current MVP launches a compact window, keeps running when the window is closed, and implements live Pomodoro and Stand Up timers. Rust stores an absolute deadline while running and a remaining duration while paused. The frontend receives snapshots and never acts as the source of truth for elapsed time.
+The current MVP launches a compact window, keeps running when the window is closed, and implements live Pomodoro and Stand Up timers. Rust stores an absolute deadline while running and a remaining duration while paused. The frontend receives snapshots and never acts as the source of truth for elapsed time. Switching modes keeps the running session (work stays work, break stays break), like the macOS app.
 
 ## Architecture
 
@@ -19,7 +19,11 @@ The current MVP launches a compact window, keeps running when the window is clos
 - The full-screen reminder can also show one short health fact (movement, water, food, eating habits, sleep, sunlight, stretching, eyes) with an emoji, in Vietnamese with the English line below it; it then stays up for 20 seconds instead of 6. 365 facts (one per day) are compiled into the app and Rust picks one at random each time; the toast never shows one. The "Health facts on reminders" setting is on by default, and a `state.json` saved before it existed loads with it on.
 - Local JSON/config persistence is sufficient; there is no server, account, database, telemetry, or cloud sync.
 
-Settings and timer state are stored in `state.json` under Tauri's application config directory. Writes occur after user actions, settings changes, and session transitions; the countdown itself remains deadline-based and does not write every second. Each write goes to a sibling temporary file that is renamed over `state.json`. A `state.json` that cannot be parsed is copied to `state.json.corrupt` before defaults are used, and restored durations outside the settings ranges fall back to the product defaults. Saving settings resets the current session only when a timer duration or the long-break cycle changed. If the app panics, the message and a backtrace are appended to `crash.log` in the same folder (restarted once it passes 256 KB); nothing else is written there and nothing leaves the machine.
+Rust also attributes sitting / standing / rest time into per-day statistics (UTC+7 day keys, hourly buckets, break counts, longest-sit stretches), shown in a Screen Time-style Statistics view with Day/Week scopes. Gaps over two minutes between attributions (sleep) are discarded from stats; the countdown itself keeps its deadline catch-up. A daily standing goal (default 60 minutes, 0 disables it) notifies once per day.
+
+The UI is bilingual (English default, Vietnamese bundled — no download) and includes an About panel (version, author, bug reports; no network update check), a "Buy me a coffee" link, and the lunar year's zodiac animal on the calendar tile.
+
+Settings, timer state and statistics are stored in `state.json` under Tauri's application config directory. Writes occur after user actions, settings changes, and session transitions; the countdown itself remains deadline-based and does not write every second. Each write goes to a sibling temporary file that is renamed over `state.json`. A `state.json` that cannot be parsed is copied to `state.json.corrupt` before defaults are used, and restored durations outside the settings ranges fall back to the product defaults. Saving settings resets the current session only when a timer duration or the long-break cycle changed. If the app panics, the message and a backtrace are appended to `crash.log` in the same folder (restarted once it passes 256 KB); nothing else is written there and nothing leaves the machine.
 
 Both windows are declared with `"create": false` and built in `setup()` after the timer state is registered, so a page that loads quickly can never query the timer before it exists.
 
