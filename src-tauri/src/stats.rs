@@ -144,13 +144,18 @@ impl StatsStore {
     pub fn set_phase(&mut self, now_ms: u64, phase: Option<Phase>) {
         let day = day_key(now_ms);
         if self.today_key != day {
+            // today_key is runtime-only, so "" means "no previous day" (fresh
+            // load): keep the persisted goal state instead of clearing it.
+            let first_day = self.today_key.is_empty();
             let midnight = day_start_ms(now_ms);
-            if self.current_phase.is_some() && !self.today_key.is_empty() {
+            if self.current_phase.is_some() && !first_day {
                 // Close [segment_start, midnight) into the old day.
                 self.close_current(midnight.min(now_ms));
             }
             self.today_key = day;
-            self.goal_day = None;
+            if !first_day {
+                self.goal_day = None;
+            }
             if self.current_phase == Some(Phase::Sitting) {
                 // A stretch never spans calendar days: the old day kept its
                 // share up to midnight, and the new day measures only its own.
@@ -673,6 +678,22 @@ mod tests {
         // A store saved before goal tracking existed loads un-notified.
         let legacy: StatsStore = serde_json::from_str(r#"{"records":{}}"#).unwrap();
         assert_eq!(legacy.goal_notified_for(), None);
+    }
+
+    #[test]
+    fn goal_survives_a_same_day_restart() {
+        let mut store = StatsStore::default();
+        store.set_phase(BASE, Some(Phase::Standing));
+        store.mark_goal_notified("2026-10-26".to_string());
+        let json = serde_json::to_string(&store).unwrap();
+        let mut reloaded: StatsStore = serde_json::from_str(&json).unwrap();
+        // First attribution after restart is the same day: the persisted
+        // notification stays sent instead of refiring.
+        reloaded.set_phase(BASE + 60_000, Some(Phase::Standing));
+        assert_eq!(reloaded.goal_notified_for(), Some("2026-10-26"));
+        // The next day still rolls over and clears it.
+        reloaded.set_phase(BASE + 24 * 3_600_000, Some(Phase::Standing));
+        assert_eq!(reloaded.goal_notified_for(), None);
     }
 
     #[test]

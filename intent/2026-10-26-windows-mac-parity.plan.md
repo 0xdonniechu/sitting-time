@@ -86,3 +86,10 @@ Intent: `intent/2026-10-26-windows-mac-parity.md`. Branch:
 5. MINOR đòi revert `ESNext.Disposable` trong tsconfig — BÁC, có bằng chứng:
    `@tauri-apps/api` 2.12.4 khai báo `[Symbol.asyncDispose]`
    (`core.d.ts:422`), thiếu lib là `npm run build` gãy TS2550 (đã quan sát).
+
+## Review round 2 (focused, FAIL → fixed): `goal_day` persist chưa đủ —
+`today_key` runtime-only nên sau restart lần `set_phase` đầu tiên luôn
+rơi vào nhánh rollover và xóa `goal_day` vừa persist. Đã guard bằng
+"no previous day" (`today_key` rỗng thì giữ goal), khóa bằng test
+`goal_survives_a_same_day_restart` (đã quan sát FAIL trên code cũ,
+PASS sau fix). Không chạy round 3 (hết budget 2 vòng): merge/push chờ owner.
