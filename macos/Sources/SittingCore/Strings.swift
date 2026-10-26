@@ -123,6 +123,13 @@ public struct Strings: Sendable {
     public var viewReleaseButton: String { t("viewReleaseButton", "View Release") }
     public var reportBugButton: String { t("reportBugButton", "Report a Bug") }
 
+    public var starNote: String {
+        t("starNote", "If this app helps your spine and discs, please star it on")
+    }
+
+    public var starRepo: String { t("starRepo", "GitHub") }
+    public var starThanks: String { t("starThanks", "— thank you!") }
+
     // MARK: - Stats window
 
     public var statsPanelTitle: String { t("statsPanelTitle", "Statistics") }

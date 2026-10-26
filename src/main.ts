@@ -10,7 +10,7 @@ import { formatDuration, t, ZODIAC_EMOJI, type Language } from "./strings";
 type TimerMode = "pomodoro" | "standUp";
 type SessionKind = "focus" | "shortBreak" | "longBreak" | "sitting" | "move";
 type TimerStatus = "idle" | "running" | "paused";
-type ViewName = "dash" | "settings" | "stats" | "about";
+type ViewName = "dash" | "settings" | "stats" | "about" | "welcome";
 
 interface TimerSnapshot {
   selectedMode: TimerMode;
@@ -37,6 +37,7 @@ interface SettingsPayload {
   startMinimizedToTray: boolean;
   language: Language;
   standGoalMinutes: number;
+  welcomed: boolean;
 }
 
 interface CalendarDay {
@@ -82,6 +83,7 @@ interface AppInfo {
   authorUrl: string;
   bugUrl: string;
   donateUrl: string;
+  repoUrl: string;
 }
 
 const weekdayNames = ["Chủ Nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"];
@@ -228,6 +230,15 @@ app.innerHTML = `
     </div>
   </section>
 
+  <section class="sub-view hidden" id="view-welcome" aria-label="Welcome">
+    <div class="welcome-body">
+      <figure class="welcome-meme"><img src="./tom-cruise-programmers.png" alt="Meme contrasting Tom Cruise at 60 clinging to an aircraft with a programmer at 30 holding their sore lower back." /></figure>
+      <h2 class="welcome-title" data-i18n="welcomeTitle">Your spine keeps the score</h2>
+      <p class="welcome-text" data-i18n="welcomeBody">SittingTime reminds you to stand up every 45 minutes. The meme is funny — back pain isn't.</p>
+      <button class="save-button" id="welcome-start" type="button" data-i18n="welcomeStart">Get started</button>
+    </div>
+  </section>
+
   <section class="sub-view hidden" id="view-about" aria-label="About">
     <header class="settings-header">
       <button class="back-button" id="about-back" aria-label="Back">‹</button>
@@ -238,6 +249,7 @@ app.innerHTML = `
       <h3>SittingTime</h3>
       <p class="about-version" id="about-version"></p>
       <p class="about-madeby"><span data-i18n="madeBy">Made by</span> <button class="text-link" id="about-author">0xdonniechu</button></p>
+      <p class="about-star"><span data-i18n="starNote">If this app helps your spine and discs, please star it on</span> <button class="text-link" id="about-star" data-i18n="starRepo">GitHub</button> <span data-i18n="starThanks">— thank you!</span></p>
       <button class="preview-button" id="about-bug" type="button" data-i18n="reportBug">Report a Bug</button>
       <button class="coffee-pill wide" id="about-donate" type="button" data-i18n="buyCoffee">Buy me a coffee</button>
       <p class="footer-note" id="about-note"></p>
@@ -261,6 +273,7 @@ const views: Record<ViewName, HTMLElement> = {
   settings: document.querySelector<HTMLElement>("#view-settings")!,
   stats: document.querySelector<HTMLElement>("#view-stats")!,
   about: document.querySelector<HTMLElement>("#view-about")!,
+  welcome: document.querySelector<HTMLElement>("#view-welcome")!,
 };
 
 function showView(name: ViewName): void {
@@ -716,6 +729,22 @@ document.querySelector<HTMLButtonElement>("#about-back")!.addEventListener("clic
 document.querySelector<HTMLButtonElement>("#settings-donate")!.addEventListener("click", () => void openExternal(appInfo?.donateUrl));
 document.querySelector<HTMLButtonElement>("#about-donate")!.addEventListener("click", () => void openExternal(appInfo?.donateUrl));
 document.querySelector<HTMLButtonElement>("#about-author")!.addEventListener("click", () => void openExternal(appInfo?.authorUrl));
+document.querySelector<HTMLButtonElement>("#about-star")!.addEventListener("click", () => void openExternal(appInfo?.repoUrl));
+document.querySelector<HTMLButtonElement>("#welcome-start")!.addEventListener("click", () => {
+  if (!currentSettings) {
+    showView("dash");
+    return;
+  }
+  const payload = { ...currentSettings, welcomed: true };
+  void invoke<TimerSnapshot>("save_settings", { settings: payload }).then(
+    (snapshot) => {
+      currentSettings = payload;
+      render(snapshot);
+      showView("dash");
+    },
+    console.error,
+  );
+});
 document.querySelector<HTMLButtonElement>("#about-bug")!.addEventListener("click", () => void openExternal(appInfo?.bugUrl));
 document.querySelector<HTMLButtonElement>("#preview-reminder")!.addEventListener("click", () => {
   void invoke("preview_reminder");
@@ -764,6 +793,7 @@ settingsForm.addEventListener("submit", async (event) => {
     startMinimizedToTray: field<HTMLInputElement>("startMinimizedToTray").checked,
     language: field<HTMLSelectElement>("language").value as Language,
     standGoalMinutes: Number(field("standGoalMinutes").value),
+    welcomed: currentSettings?.welcomed ?? true,
   };
 
   settingsMessage.textContent = t(lang, "saving");
@@ -816,6 +846,7 @@ async function boot(): Promise<void> {
   }
   applyI18n();
   renderAbout();
+  if (currentSettings && !currentSettings.welcomed) showView("welcome");
   void refreshFromRust();
   void refreshCalendar();
   void refreshStats();

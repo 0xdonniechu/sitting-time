@@ -30,6 +30,8 @@ struct AboutView: View {
                     .foregroundStyle(.secondary)
                 Link(AppInfo.authorName, destination: AppInfo.authorURL)
             }
+            Text("\(strings.starNote) [\(strings.starRepo)](\(AppInfo.repoURL)) \(strings.starThanks)")
+                .foregroundStyle(.secondary)
             Divider()
             HStack {
                 Button(checking ? strings.checkUpdatesChecking : strings.checkUpdatesButton) {
