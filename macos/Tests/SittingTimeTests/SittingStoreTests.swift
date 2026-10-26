@@ -33,6 +33,19 @@ func run(_ store: SittingStore, _ clock: FakeClock, seconds: Int) {
     }
 }
 
+/// Faster variant for long scenarios: 60 s steps never trip the sleep
+/// detector either, and checkpoints/transitions behave the same.
+@MainActor
+func runSteps(_ store: SittingStore, _ clock: FakeClock, seconds: Int, step: Int = 60) {
+    var left = seconds
+    while left > 0 {
+        let dt = min(step, left)
+        clock.advance(TimeInterval(dt))
+        store.tick()
+        left -= dt
+    }
+}
+
 func isNear(_ actual: TimeInterval, _ expected: TimeInterval, tolerance: TimeInterval = 2) -> Bool {
     abs(actual - expected) <= tolerance
 }
@@ -516,6 +529,56 @@ func installVietnamesePackForTests() {
         #expect(isNear(today.hourly[11].sittingSeconds, 60))
         #expect(today.hourly.enumerated().allSatisfy { $0.offset == 10 || $0.offset == 11 || $0.element.trackedSeconds == 0 })
         #expect(isNear(store.weekData().last?.trackedSeconds ?? -1, 90))
+    }
+
+    /// Conservation of time: without sleep gaps every elapsed second lands
+    /// in exactly one bucket; sleep gaps land nowhere. Totals and hourly
+    /// splits must agree on every day. This one scenario would have caught
+    /// both the resume-time rest leak and the overnight-sleep phantom hours.
+    @Test @MainActor func timeIsConservedAcrossMixedWeek() {
+        var settings = AppSettings()
+        settings.standGoalMinutes = 0
+        settings.autoResumeOnReturn = false
+        let calendar = Calendar.current
+        let today9 = calendar.date(bySettingHour: 9, minute: 0, second: 0, of: Date())!
+        let oldest9 = calendar.date(byAdding: .day, value: -6, to: today9)!
+        let (store, clock, idleBox, _) = makeStore(start: oldest9, settings: settings)
+        idleBox.seconds = 0
+        var expected: TimeInterval = 0
+        for day in 0..<7 {
+            // Mixed activity, ~70 min a day, with control actions inside.
+            runSteps(store, clock, seconds: 1800); expected += 1800
+            store.setPosture(.standing)
+            runSteps(store, clock, seconds: 900); expected += 900
+            if day % 2 == 0 { store.setMode(day % 4 == 0 ? .pomodoro : .standUp) }
+            store.togglePause()
+            runSteps(store, clock, seconds: 300); expected += 300
+            store.togglePause()
+            store.setPosture(.sitting)
+            if day % 3 == 0 { store.skipSession() }
+            runSteps(store, clock, seconds: 1200); expected += 1200
+            store.togglePause()
+            if day < 6 {
+                // Overnight sleep: one jump + one tick, all discarded.
+                clock.now = calendar.date(byAdding: .day, value: day - 5, to: today9)!
+                idleBox.seconds = 12 * 3600
+                store.tick()
+                idleBox.seconds = 0
+            }
+        }
+        let week = store.weekData()
+        let tracked = week.reduce(0) { $0 + $1.trackedSeconds }
+        #expect(isNear(tracked, expected, tolerance: 5))
+        // No day lost its activity.
+        for day in week {
+            #expect(day.trackedSeconds > 0)
+        }
+        // Hourly splits agree with the live totals (closed-segment splitting
+        // is covered at 1 s resolution by hourlySplitAcrossHourBoundary).
+        let today = store.liveToday()
+        #expect(isNear(today.hourly.reduce(0) { $0 + $1.sittingSeconds }, today.sittingSeconds, tolerance: 2))
+        #expect(isNear(today.hourly.reduce(0) { $0 + $1.standingSeconds }, today.standingSeconds, tolerance: 2))
+        #expect(isNear(today.hourly.reduce(0) { $0 + $1.pausedSeconds }, today.pausedSeconds, tolerance: 2))
     }
 
     @Test @MainActor func resumeBanksPausedStretchAsRest() {

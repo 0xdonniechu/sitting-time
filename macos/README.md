@@ -64,6 +64,7 @@ Requires: macOS 14+, Xcode (Swift 6).
 ./scripts/build-app.sh   # tests + 0-warning release build + icon paint + .app assemble (ad-hoc signed)
 open dist/SittingTime.app
 ./scripts/build-dmg.sh   # build-app.sh + dist/SittingTime.dmg (drag into Applications)
+./scripts/release.sh 1.2.0   # bump → dmg → push → GitHub release + byte-verify
 ```
 
 A raw dev run (`swift run`) works but shows a dock icon for lack of a bundle;
@@ -74,18 +75,20 @@ Data: `~/Library/Application Support/SittingTime/` (`records.json`, `settings.js
 
 ## Testing
 
-- `swift test`: 59 tests (Swift Testing) — state machine on a fake clock
+- `swift test`: 71 tests (Swift Testing) — state machine on a fake clock
   (countdown, silent Stand Up/Pomodoro transitions, silent skip, pause freezing
-  the session, posture logging sit/stand hours, mode switch, minute edits
-  restarting the right session, auto-pause/resume, sleep, midnight rollover,
-  goals, checkpoints without double-counting or clock jumps), English
-  formatting, legacy settings (with the old `sitReminderMinutes` key) still
-  loading, Vietnamese pack (key coverage, placeholder fill, plural rules,
-  English fallback per string), sub-calendars (Tet, leap month, Yom Kippur,
-  Adar I/II, Ramadan, Buddhist year, Can Chi elements, zodiac animals), 365
-  quotes (exact count, unique, max 160 chars, random picks inside the set)
-  and the flash hook (fires exactly once per session end, honors both
-  toggles, silent banner while flash shows).
+  the session, posture logging sit/stand hours, mode switch keeping the
+  session, minute edits restarting the right session, auto-pause/resume,
+  sleep, midnight rollover, goals, checkpoints without double-counting or
+  clock jumps), conservation of time across a mixed week, hourly splits,
+  English formatting, legacy settings (with the old `sitReminderMinutes`
+  key) still loading, Vietnamese pack (key coverage, placeholder fill,
+  plural rules, English fallback per string), sub-calendars (Tet, leap
+  month, Yom Kippur, Adar I/II, Ramadan, Buddhist year, Can Chi elements,
+  zodiac animals), 365 quotes (exact count, unique, max 160 chars, random
+  picks inside the set), the update checker (release parsing, numeric
+  version compare) and the flash hook (fires exactly once per session end,
+  honors both toggles, silent banner while flash shows).
 - Icon: the paint script self-checks pixels (white chair, teal background,
   orange dot, transparent corner) and verifies the `.icns` reads back all
   7 image sizes.
@@ -127,11 +130,13 @@ Sources/SittingCore/             # pure testable logic (no AppKit/SwiftUI)
   SubCalendar.swift              # sub-calendar dates via Foundation (lunar = Chinese at UTC+7)
   HealthQuotes.swift             # 365 English quotes + index; Vietnamese lives in the pack
 Sources/SittingTime/             # SwiftUI: menu bar, popover, stats (Charts), settings
-  FlashCenter.swift              # black full-screen flash window + message/quote card
+  FlashCenter.swift              # soft full-screen flash, Tauri-style + chime
   ZodiacArt.swift                # monochrome zodiac loader, element-tinted
-Tests/SittingTimeTests/          # 59 tests with FakeClock/FakeIdle/SpyNotify
+Tests/SittingTimeTests/          # 71 tests with FakeClock/FakeIdle/SpyNotify
 scripts/build-app.sh             # test → release → icon → sign .app
 scripts/build-dmg.sh             # build-app.sh + drag-to-Applications .dmg
+scripts/release.sh               # bump → dmg → push → GitHub release → verify
+scripts/preview.sh               # render Stats/About/Flash screens to PNGs
 scripts/generate-icon.swift      # paint icon + self-check + hand-assembled .icns
 Resources/Info.plist             # LSUIElement, id com.0xdonniechu.sittingtime
 Resources/LanguagePacks/vi.json  # Vietnamese pack (downloaded from public URL, never bundled)
