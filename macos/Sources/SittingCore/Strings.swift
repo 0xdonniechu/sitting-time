@@ -106,6 +106,23 @@ public struct Strings: Sendable {
 
     public var settingsPanelTitle: String { t("settingsPanelTitle", "Settings") }
 
+    // MARK: - About window
+
+    public var aboutButton: String { t("aboutButton", "About") }
+    public var aboutPanelTitle: String { t("aboutPanelTitle", "About SittingTime") }
+    public var aboutMadeBy: String { t("aboutMadeBy", "Made by") }
+    public var checkUpdatesButton: String { t("checkUpdatesButton", "Check for Updates") }
+    public var checkUpdatesChecking: String { t("checkUpdatesChecking", "Checking…") }
+    public var checkUpdatesCurrent: String { t("checkUpdatesCurrent", "You're up to date") }
+
+    public func checkUpdatesAvailable(_ version: String) -> String {
+        t("checkUpdatesAvailable", "Version {version} available", ["version": version])
+    }
+
+    public var checkUpdatesFailed: String { t("checkUpdatesFailed", "Couldn't check for updates") }
+    public var viewReleaseButton: String { t("viewReleaseButton", "View Release") }
+    public var reportBugButton: String { t("reportBugButton", "Report a Bug") }
+
     // MARK: - Stats window
 
     public var statsPanelTitle: String { t("statsPanelTitle", "Statistics") }

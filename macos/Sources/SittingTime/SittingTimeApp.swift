@@ -38,6 +38,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     private var lastPopoverClose: Date = .distantPast
     private var statsPanel: NSPanel?
     private var settingsPanel: NSPanel?
+    private var aboutPanel: NSPanel?
     private let flashCenter = FlashCenter()
     private var lockFD: Int32 = -1
     private var isDuplicate = false
@@ -88,7 +89,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             popover.contentViewController = NSHostingController(
                 rootView: MenuBarView(
                     openStats: { [weak self] in self?.showStats() },
-                    openSettings: { [weak self] in self?.showSettings() }
+                    openSettings: { [weak self] in self?.showSettings() },
+                    openAbout: { [weak self] in self?.showAbout() }
                 )
                 .environment(store)
             )
@@ -186,7 +188,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     }
 
     /// Hides every visible window the click landed outside of: popover,
-    /// stats, settings. Clicks inside a window never touch it.
+    /// stats, settings, about. Clicks inside a window never touch it.
     private func dismissWindowsOnOutsideClick() {
         let point = NSEvent.mouseLocation
         if let popover, popover.isShown,
@@ -194,7 +196,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
            !frame.contains(point) {
             popover.close()
         }
-        for panel in [statsPanel, settingsPanel] {
+        for panel in [statsPanel, settingsPanel, aboutPanel] {
             if let panel, panel.isVisible, !panel.frame.contains(point) {
                 panel.close()
             }
@@ -256,6 +258,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         // the size once is not enough, the window can still come back shrunk.
         settingsPanel?.setContentSize(NSSize(width: 480, height: 700))
         settingsPanel?.makeKeyAndOrderFront(nil)
+        NSApp.activate()
+    }
+
+    private func showAbout() {
+        // Manual panel like showStats/showSettings.
+        if aboutPanel == nil {
+            let panel = NSPanel(
+                contentRect: NSRect(x: 0, y: 0, width: 420, height: 380),
+                styleMask: [.titled, .closable, .resizable],
+                backing: .buffered, defer: false
+            )
+            panel.level = .floating
+            panel.hidesOnDeactivate = false
+            // Same collapse guard as the settings panel (see showSettings).
+            let hosting = NSHostingController(rootView: AboutView(onReturnToDash: { [weak self] in
+                self?.aboutPanel?.close()
+                self?.showPopover()
+            }).environment(store))
+            hosting.sizingOptions = []
+            panel.contentViewController = hosting
+            panel.isReleasedWhenClosed = false
+            panel.center()
+            aboutPanel = panel
+        }
+        aboutPanel?.title = Strings(store.settings.language).aboutPanelTitle
+        aboutPanel?.setContentSize(NSSize(width: 420, height: 380))
+        aboutPanel?.makeKeyAndOrderFront(nil)
         NSApp.activate()
     }
 

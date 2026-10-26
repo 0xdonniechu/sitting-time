@@ -12,6 +12,7 @@ struct MenuBarView: View {
     @Environment(SittingStore.self) private var store
     let openStats: () -> Void
     let openSettings: () -> Void
+    let openAbout: () -> Void
 
     var body: some View {
         let _ = store.tickCount
@@ -142,6 +143,10 @@ struct MenuBarView: View {
                     Image(systemName: "gearshape")
                 }
                 .help(strings.settingsButton)
+                Button(action: openAbout) {
+                    Image(systemName: "info.circle")
+                }
+                .help(strings.aboutButton)
                 Spacer(minLength: 0)
                 Link(destination: AppInfo.donateURL) {
                     HStack(spacing: 3) {

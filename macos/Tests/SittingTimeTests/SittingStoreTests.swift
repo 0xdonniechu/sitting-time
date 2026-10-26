@@ -952,6 +952,9 @@ func solarDate(_ year: Int, _ month: Int, _ day: Int) -> Date {
         "autoPausedNote",
         "backButton",
         "autoSection",
+        "aboutButton",
+        "aboutMadeBy",
+        "aboutPanelTitle",
         "breakOverTitle",
         "breaksLine.other",
         "buddhist.suffix",
@@ -967,6 +970,11 @@ func solarDate(_ year: Int, _ month: Int, _ day: Int) -> Date {
         "chartRest",
         "chartSitting",
         "chartStanding",
+        "checkUpdatesAvailable",
+        "checkUpdatesButton",
+        "checkUpdatesChecking",
+        "checkUpdatesCurrent",
+        "checkUpdatesFailed",
         "clearAllButton",
         "clearAllDialog",
         "dataSection",
@@ -1015,6 +1023,7 @@ func solarDate(_ year: Int, _ month: Int, _ day: Int) -> Date {
         "quitButton",
         "quoteToggle",
         "reminderBody",
+        "reportBugButton",
         "requestButton",
         "resetTodayButton",
         "resetTodayDialog",
@@ -1048,6 +1057,7 @@ func solarDate(_ year: Int, _ month: Int, _ day: Int) -> Date {
         "unit.hour",
         "unit.minute",
         "unit.second",
+        "viewReleaseButton",
         "weekTitle",
         "workEndTitle",
         "workMinutes",
@@ -1118,5 +1128,31 @@ func solarDate(_ year: Int, _ month: Int, _ day: Int) -> Date {
         #expect(Strings(.english).pauseButton == "Pause")
         // Resolved English stays English even with the pack installed.
         #expect(Strings(.english).language == .english)
+    }
+}
+
+// MARK: - Update checker (pure, no actor needed)
+
+@Suite struct UpdateCheckerTests {
+    @Test func parsesLatestMacOSRelease() {
+        let json = """
+            [{"tag_name":"macos-v1.1.3"},{"tag_name":"win-v2.0.0"},{"tag_name":"macos-v1.2.0"},{"tag_name":"macos-v1.10.0"}]
+            """
+        #expect(UpdateChecker.latestVersion(in: Data(json.utf8)) == "1.10.0")
+    }
+
+    @Test func ignoresNonMacOSTagsAndGarbage() {
+        #expect(UpdateChecker.latestVersion(in: Data(#"[{"tag_name":"win-v2.0.0"}]"#.utf8)) == nil)
+        #expect(UpdateChecker.latestVersion(in: Data("not json".utf8)) == nil)
+        #expect(UpdateChecker.latestVersion(in: Data("[]".utf8)) == nil)
+        #expect(UpdateChecker.latestVersion(in: Data(#"[{"tag_name":"macos-vbeta"}]"#.utf8)) == nil)
+    }
+
+    @Test func comparesVersionsNumerically() {
+        #expect(UpdateChecker.compareVersions("1.1.10", "1.1.3") == .orderedDescending)
+        #expect(UpdateChecker.compareVersions("1.1.3", "1.1.10") == .orderedAscending)
+        #expect(UpdateChecker.compareVersions("1.2", "1.2.0") == .orderedSame)
+        #expect(UpdateChecker.compareVersions("2.0", "1.9.9") == .orderedDescending)
+        #expect(UpdateChecker.releasePageURL(version: "1.2.0").absoluteString.hasSuffix("/releases/tag/macos-v1.2.0"))
     }
 }
