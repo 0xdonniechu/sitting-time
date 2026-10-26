@@ -71,3 +71,18 @@ Intent: `intent/2026-10-26-windows-mac-parity.md`. Branch:
   chỉ còn polling `setTimeout` có sẵn (0 hit cho elapsed logic).
 - Independent review PASS trên diff của branch.
 - Owner-only trên Windows thật: tray actions, full-screen reminder, installer (ghi not run).
+
+## Review (round 1: FAIL — 1 MAJOR + 4 MINOR, đã sửa hết)
+
+1. MAJOR: `goal_day` từng `#[serde(skip)]` nên restart re-fire goal — đã
+   persist trong `state.json` (file cũ thiếu key vẫn load = un-notified).
+2. Rollover không reset `stretch_start_ms`, longest-sit ngày mới phình —
+   đã restart stretch tại midnight (ngày cũ giữ phần đến midnight).
+3. `tick_and_sync` đếm tối đa 1 break mỗi tick catch-up — đã gate bằng
+   `gap_since_last`: gap ngủ = 0 break (như Mac), không gap thì tối đa 1
+   transition nên 1 break/1 work session là chính xác.
+4. `validate()` thiếu language check theo plan — đã thêm exhaustive match
+   chốt contract (enum nên deserialize đã loại input lạ).
+5. MINOR đòi revert `ESNext.Disposable` trong tsconfig — BÁC, có bằng chứng:
+   `@tauri-apps/api` 2.12.4 khai báo `[Symbol.asyncDispose]`
+   (`core.d.ts:422`), thiếu lib là `npm run build` gãy TS2550 (đã quan sát).

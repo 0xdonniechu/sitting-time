@@ -102,6 +102,12 @@ impl SettingsPayload {
                 MIN_STAND_GOAL_MINUTES, MAX_STAND_GOAL_MINUTES
             ));
         }
+        // The language is an enum, so anything that deserializes is valid by
+        // construction; this exhaustive match pins the accepted set — adding
+        // a variant without handling it here fails the build.
+        match self.language {
+            AppLanguage::English | AppLanguage::Vietnamese => {}
+        }
         Ok(())
     }
 

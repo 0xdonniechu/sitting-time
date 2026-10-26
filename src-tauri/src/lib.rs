@@ -96,8 +96,13 @@ fn tick_and_sync(app: &AppHandle) -> Option<TimerSnapshot> {
         (transitioned, prev_session, engine.snapshot())
     };
     if let Ok(mut stats) = app.state::<AppState>().stats.lock() {
+        // Sessions a sleep catch-up skipped through never happened for the
+        // user: no breaks for the discarded gap (macOS counts none either).
+        // Without a gap at most one session can elapse between attributions,
+        // so one break per completed work session holds exactly.
+        let gapped = stats.gap_since_last(now);
         stats.set_phase(now, stats::phase_for(snapshot.status, snapshot.session));
-        if transitioned && is_work_session(prev_session) {
+        if transitioned && !gapped && is_work_session(prev_session) {
             stats.note_auto_break();
         }
     }

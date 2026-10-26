@@ -125,7 +125,7 @@ pub struct StatsStore {
     #[serde(skip)]
     stretch_start_ms: Option<u64>,
     /// Day key the standing goal already fired for (resets on day change).
-    #[serde(skip)]
+    /// Persisted so a restart does not re-fire the same day's notification.
     goal_day: Option<String>,
 }
 
@@ -144,13 +144,18 @@ impl StatsStore {
     pub fn set_phase(&mut self, now_ms: u64, phase: Option<Phase>) {
         let day = day_key(now_ms);
         if self.today_key != day {
+            let midnight = day_start_ms(now_ms);
             if self.current_phase.is_some() && !self.today_key.is_empty() {
                 // Close [segment_start, midnight) into the old day.
-                let midnight = day_start_ms(now_ms);
                 self.close_current(midnight.min(now_ms));
             }
             self.today_key = day;
             self.goal_day = None;
+            if self.current_phase == Some(Phase::Sitting) {
+                // A stretch never spans calendar days: the old day kept its
+                // share up to midnight, and the new day measures only its own.
+                self.stretch_start_ms = Some(midnight);
+            }
         }
         let gapped = self.gap_discarded(now_ms);
         self.close_current(now_ms);
@@ -285,6 +290,13 @@ impl StatsStore {
 
     fn gap_discarded(&self, now_ms: u64) -> bool {
         self.has_last && (now_ms as i64).saturating_sub(self.last_ms as i64) > SLEEP_GAP_MS
+    }
+
+    /// Whether the stretch ending now spans a sleep gap: callers check this
+    /// before `set_phase` (which refreshes the clock) to decide if anything
+    /// that happened "during" the gap — e.g. auto-advanced sessions — counts.
+    pub fn gap_since_last(&self, now_ms: u64) -> bool {
+        self.gap_discarded(now_ms)
     }
 
     /// Start of the open segment after the sleep-gap discard: a gap over two
@@ -626,6 +638,41 @@ mod tests {
         // Date keys are consecutive.
         assert!(week[0].date_key < week[6].date_key);
         assert_eq!(week[6].date_key, "2026-10-26");
+    }
+
+    #[test]
+    fn rollover_restarts_the_sitting_stretch() {
+        let mut store = StatsStore::default();
+        let midnight = BASE - 12 * 3_600_000;
+        store.set_phase(midnight - 10 * MIN, Some(Phase::Sitting));
+        drive(
+            &mut store,
+            midnight - 10 * MIN,
+            midnight + 10 * MIN,
+            Some(Phase::Sitting),
+        );
+        // The old day keeps its 10 minutes up to midnight; the new day
+        // measures only its own 10 minutes, not the whole 20-minute stretch.
+        let yesterday = store.records.get("2026-10-25").cloned().unwrap();
+        assert_eq!(yesterday.sitting_seconds, 600);
+        assert_eq!(yesterday.longest_sit_seconds, 600);
+        let today = store.live_today(midnight + 10 * MIN);
+        assert_eq!(today.sitting_seconds, 600);
+        assert_eq!(today.longest_sit_seconds, 600);
+    }
+
+    #[test]
+    fn goal_day_survives_a_save_load_round_trip() {
+        let mut store = StatsStore::default();
+        store.set_phase(BASE, Some(Phase::Standing));
+        store.mark_goal_notified("2026-10-26".to_string());
+        let json = serde_json::to_string(&store).unwrap();
+        assert!(json.contains("goalDay"));
+        let restored: StatsStore = serde_json::from_str(&json).unwrap();
+        assert_eq!(restored.goal_notified_for(), Some("2026-10-26"));
+        // A store saved before goal tracking existed loads un-notified.
+        let legacy: StatsStore = serde_json::from_str(r#"{"records":{}}"#).unwrap();
+        assert_eq!(legacy.goal_notified_for(), None);
     }
 
     #[test]
