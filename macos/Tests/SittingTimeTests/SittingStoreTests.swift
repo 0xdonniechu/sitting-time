@@ -258,7 +258,7 @@ func installVietnamesePackForTests() {
         #expect(isNear(store.liveToday().longestSitSeconds, 3000, tolerance: 5))
     }
 
-    @Test @MainActor func setModeResetsSessionKeepsPosture() {
+    @Test @MainActor func setModeKeepsWorkSessionAndElapsed() {
         let (store, clock, _, spy) = makeStore()
         store.setPosture(.standing)
         run(store, clock, seconds: 30)
@@ -266,8 +266,52 @@ func installVietnamesePackForTests() {
         #expect(store.session == .work)
         #expect(store.focusIndex == 1)
         #expect(store.posture == .standing)
-        #expect(store.sessionRemaining == 25 * 60)
+        // The 30 s carry over into the 25-minute Pomodoro focus.
+        #expect(isNear(store.sessionRemaining, 25 * 60 - 30))
         #expect(spy.reminderCount == 0)
+        // Stats kept the banked seconds too.
+        #expect(isNear(store.liveToday().standingSeconds, 30))
+        // And back: the same elapsed time under the 45-minute Stand Up work.
+        store.setMode(.standUp)
+        #expect(store.session == .work)
+        #expect(isNear(store.sessionRemaining, 45 * 60 - 30))
+    }
+
+    @Test @MainActor func setModeKeepsBreak() {
+        let (store, clock, _, _) = makeStore(settings: minuteSettings())
+        run(store, clock, seconds: 60)
+        #expect(store.session == .shortBreak)
+        run(store, clock, seconds: 20)
+        store.setMode(.pomodoro)
+        #expect(store.session == .shortBreak)
+        #expect(isNear(store.sessionRemaining, 60 - 20))
+    }
+
+    @Test @MainActor func setModeMapsLongBreakToShortBreak() {
+        let (store, clock, _, _) = makeStore(settings: minuteSettings(mode: .pomodoro))
+        // work → short ×3, work → long: 7 transitions to the long break.
+        for _ in 0..<7 {
+            run(store, clock, seconds: 60)
+        }
+        #expect(store.session == .longBreak)
+        run(store, clock, seconds: 10)
+        store.setMode(.standUp)
+        #expect(store.session == .shortBreak)
+        #expect(store.focusIndex == 1)
+        #expect(isNear(store.sessionRemaining, 60 - 10))
+    }
+
+    @Test @MainActor func setModeOverrunAdvancesNextTick() {
+        var settings = AppSettings()
+        settings.standUpWorkMinutes = 45
+        settings.pomodoroWorkMinutes = 25
+        let (store, clock, _, _) = makeStore(settings: settings)
+        run(store, clock, seconds: 30 * 60)
+        store.setMode(.pomodoro)
+        #expect(store.session == .work)
+        #expect(store.sessionRemaining == 0)
+        run(store, clock, seconds: 1)
+        #expect(store.session == .shortBreak)
     }
 
     @Test @MainActor func durationChangeRestartsCurrentSessionOnly() {

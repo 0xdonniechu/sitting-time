@@ -26,11 +26,16 @@ struct SittingTimeApp: App {
 }
 
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     /// The one store, shared with the views through .environment(store).
     var store: SittingStore = SittingStore.live()
     private var statusItem: NSStatusItem?
     private var popover: NSPopover?
+    /// When the popover last closed. A click on the status button first
+    /// dismisses a transient popover (mouse-down), then fires the toggle
+    /// action (mouse-up) — without this stamp the toggle would reopen it
+    /// and the icon could never hide the popover.
+    private var lastPopoverClose: Date = .distantPast
     private var statsPanel: NSPanel?
     private var settingsPanel: NSPanel?
     private let flashCenter = FlashCenter()
@@ -89,6 +94,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             )
             popover.behavior = .transient
             popover.animates = true
+            popover.delegate = self
             self.popover = popover
             // The tick hook refreshes the AppKit label out-of-band; the hosted
             // SwiftUI views observe the store through .environment instead.
@@ -139,9 +145,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             guard let popover else { return }
             if popover.isShown {
                 popover.close()
-            } else {
+            } else if Date().timeIntervalSince(lastPopoverClose) > 0.25 {
+                // A fresh open. When the click itself just dismissed the
+                // popover (stamped above within the window), stay closed.
                 showPopover()
             }
+        }
+    }
+
+    nonisolated func popoverDidClose(_ notification: Notification) {
+        MainActor.assumeIsolated {
+            lastPopoverClose = Date()
         }
     }
 

@@ -290,18 +290,29 @@ public final class SittingStore {
         saveData()
     }
 
-    /// Switches Stand Up / Pomodoro, restarting from a fresh work session.
-    /// Posture is the user's physical state, so it carries over.
+    /// Switches Stand Up / Pomodoro, keeping the running session: work stays
+    /// work, break stays break, and the clock keeps running — switching modes
+    /// mid-break no longer throws the break away. Stand Up has no long break,
+    /// so a Pomodoro long break becomes a short break. Posture is the user's
+    /// physical state, so it carries over.
     public func setMode(_ newMode: SessionMode) {
         guard newMode != settings.sessionMode else { return }
         let at = now()
         rolloverIfNeeded(at: at)
         closeSegment(upTo: at)
+        // Snapshot first: assigning sessionMode re-triggers the settings
+        // restart rule (lengths differ across modes), which we undo below.
+        let elapsed = sessionElapsed
         settings.sessionMode = newMode
-        session = .work
-        focusIndex = 1
+        if newMode == .standUp {
+            if session == .longBreak { session = .shortBreak }
+            focusIndex = 1
+        }
+        // To Pomodoro the kind and focusIndex carry over untouched (Stand Up
+        // invariant: focusIndex is always 1). When the carried elapsed time
+        // already exceeds the new length, the next tick auto-advances.
+        sessionElapsedBank = elapsed
         sessionStartedAt = at
-        sessionElapsedBank = 0
         segmentStartedAt = at
         refreshContinuousSit(at: at)
         saveData()

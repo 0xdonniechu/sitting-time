@@ -11,6 +11,6 @@ enum AppInfo {
         return "dev"
     }
 
-    /// Donation page. Placeholder homepage until the real handle lands.
-    static let donateURL = URL(string: "https://www.buymeacoffee.com/")!
+    /// Donation page.
+    static let donateURL = URL(string: "https://ko-fi.com/0xdonniechu")!
 }
