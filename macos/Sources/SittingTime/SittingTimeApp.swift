@@ -36,6 +36,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     /// action (mouse-up) — without this stamp the toggle would reopen it
     /// and the icon could never hide the popover.
     private var lastPopoverClose: Date = .distantPast
+    /// Fires on every system-wide click while the popover is shown; outside
+    /// clicks dismiss it (see startDismissMonitor). Nil otherwise.
+    private var dismissMonitor: Any?
     private var statsPanel: NSPanel?
     private var settingsPanel: NSPanel?
     private let flashCenter = FlashCenter()
@@ -156,6 +159,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     nonisolated func popoverDidClose(_ notification: Notification) {
         MainActor.assumeIsolated {
             lastPopoverClose = Date()
+            stopDismissMonitor()
         }
     }
 
@@ -172,6 +176,35 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             popover.contentSize = NSSize(width: 328, height: 520)
         }
         popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        startDismissMonitor()
+    }
+
+    /// `.transient` alone never fires for a menu bar app (it is never active,
+    /// so AppKit sees no outside interaction), so dismissal is explicit: every
+    /// system-wide click outside the popover frame closes it. Clicks inside
+    /// the frame are ignored, and the status-button click is covered by the
+    /// toggle guard (the monitor closes on mouse-down, the action stays shut
+    /// on mouse-up). Runs only while the popover is shown.
+    private func startDismissMonitor() {
+        stopDismissMonitor()
+        dismissMonitor = NSEvent.addGlobalMonitorForEvents(
+            matching: [.leftMouseDown, .rightMouseDown]
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard let self, let popover = self.popover, popover.isShown else { return }
+                if let frame = popover.contentViewController?.view.window?.frame,
+                   !frame.contains(NSEvent.mouseLocation) {
+                    popover.close()
+                }
+            }
+        }
+    }
+
+    private func stopDismissMonitor() {
+        if let monitor = dismissMonitor {
+            NSEvent.removeMonitor(monitor)
+            dismissMonitor = nil
+        }
     }
 
     private func showStats() {
