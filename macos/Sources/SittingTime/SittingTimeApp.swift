@@ -36,9 +36,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     /// action (mouse-up) — without this stamp the toggle would reopen it
     /// and the icon could never hide the popover.
     private var lastPopoverClose: Date = .distantPast
-    /// Fires on every system-wide click while the popover is shown; outside
-    /// clicks dismiss it (see startDismissMonitor). Nil otherwise.
-    private var dismissMonitor: Any?
     private var statsPanel: NSPanel?
     private var settingsPanel: NSPanel?
     private let flashCenter = FlashCenter()
@@ -99,6 +96,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             popover.animates = true
             popover.delegate = self
             self.popover = popover
+            // One permanent click-outside monitor for the popover and both
+            // panels: a menu bar app is never active, so `.transient` never
+            // fires and a start/stop lifecycle can desync — instead every
+            // system-wide click is checked against the visible frames.
+            // (The token only identifies the monitor for removal; dropping
+            // it keeps the monitor for the app's lifetime.)
+            _ = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
+                Task { @MainActor [weak self] in
+                    self?.dismissWindowsOnOutsideClick()
+                }
+            }
             // The tick hook refreshes the AppKit label out-of-band; the hosted
             // SwiftUI views observe the store through .environment instead.
             store.onTick = { [weak self] in self?.refreshStatusItem() }
@@ -159,7 +167,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     nonisolated func popoverDidClose(_ notification: Notification) {
         MainActor.assumeIsolated {
             lastPopoverClose = Date()
-            stopDismissMonitor()
         }
     }
 
@@ -176,34 +183,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             popover.contentSize = NSSize(width: 328, height: 520)
         }
         popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-        startDismissMonitor()
     }
 
-    /// `.transient` alone never fires for a menu bar app (it is never active,
-    /// so AppKit sees no outside interaction), so dismissal is explicit: every
-    /// system-wide click outside the popover frame closes it. Clicks inside
-    /// the frame are ignored, and the status-button click is covered by the
-    /// toggle guard (the monitor closes on mouse-down, the action stays shut
-    /// on mouse-up). Runs only while the popover is shown.
-    private func startDismissMonitor() {
-        stopDismissMonitor()
-        dismissMonitor = NSEvent.addGlobalMonitorForEvents(
-            matching: [.leftMouseDown, .rightMouseDown]
-        ) { [weak self] _ in
-            Task { @MainActor [weak self] in
-                guard let self, let popover = self.popover, popover.isShown else { return }
-                if let frame = popover.contentViewController?.view.window?.frame,
-                   !frame.contains(NSEvent.mouseLocation) {
-                    popover.close()
-                }
-            }
+    /// Hides every visible window the click landed outside of: popover,
+    /// stats, settings. Clicks inside a window never touch it.
+    private func dismissWindowsOnOutsideClick() {
+        let point = NSEvent.mouseLocation
+        if let popover, popover.isShown,
+           let frame = popover.contentViewController?.view.window?.frame,
+           !frame.contains(point) {
+            popover.close()
         }
-    }
-
-    private func stopDismissMonitor() {
-        if let monitor = dismissMonitor {
-            NSEvent.removeMonitor(monitor)
-            dismissMonitor = nil
+        for panel in [statsPanel, settingsPanel] {
+            if let panel, panel.isVisible, !panel.frame.contains(point) {
+                panel.close()
+            }
         }
     }
 
