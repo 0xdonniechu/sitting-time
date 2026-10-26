@@ -30,7 +30,7 @@ struct AboutView: View {
                     .foregroundStyle(.secondary)
                 Link(AppInfo.authorName, destination: AppInfo.authorURL)
             }
-            Text("\(strings.starNote) [\(strings.starRepo)](\(AppInfo.repoURL)) \(strings.starThanks)")
+            Text("\(strings.starPrompt) [GitHub ⭐](\(AppInfo.repositoryURL.absoluteString))")
                 .foregroundStyle(.secondary)
             Divider()
             HStack {

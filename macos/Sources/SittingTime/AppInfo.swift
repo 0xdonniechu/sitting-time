@@ -24,6 +24,6 @@ enum AppInfo {
     static let authorURL = URL(string: "https://github.com/0xdonniechu")!
     /// New-issue form, shown in About.
     static let reportBugURL = URL(string: "https://github.com/0xdonniechu/sitting-time/issues/new")!
-    /// Repo home, shown in About for the star request.
-    static let repoURL = URL(string: "https://github.com/0xdonniechu/sitting-time")!
+    /// Public repo, linked from the star prompt in About.
+    static let repositoryURL = URL(string: "https://github.com/0xdonniechu/sitting-time")!
 }

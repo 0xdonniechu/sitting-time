@@ -147,7 +147,7 @@ Resources/Zodiac/*.png           # 12 monochrome zodiac icons (transparent, elem
 
 - English UI by default; Vietnamese is a download in Settings (never bundled,
   keeps installs small), each missing string falls back to English. Personal
-  standalone app, so no suite bar spec.
+  app, not part of the Ambysto suite, so no suite bar spec.
 - Timer follows **self-advancing countdown sessions** (like the Tauri build),
   not open-ended accumulation: Stand Up 45/5, Pomodoro 25/5/15 after every 4
   focus sessions; every session end chimes + flashes. Sit/stand posture inside

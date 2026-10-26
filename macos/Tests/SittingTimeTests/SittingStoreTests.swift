@@ -1119,6 +1119,7 @@ func solarDate(_ year: Int, _ month: Int, _ day: Int) -> Date {
         "skipButton",
         "soundToggle",
         "startPausedToggle",
+        "starPrompt",
         "statsButton",
         "statsDailyAverage",
         "statsDay",

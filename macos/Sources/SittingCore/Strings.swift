@@ -122,13 +122,9 @@ public struct Strings: Sendable {
     public var checkUpdatesFailed: String { t("checkUpdatesFailed", "Couldn't check for updates") }
     public var viewReleaseButton: String { t("viewReleaseButton", "View Release") }
     public var reportBugButton: String { t("reportBugButton", "Report a Bug") }
-
-    public var starNote: String {
-        t("starNote", "If this app helps your spine and discs, please star it on")
+    public var starPrompt: String {
+        t("starPrompt", "If you find this repo useful, please leave a star on")
     }
-
-    public var starRepo: String { t("starRepo", "GitHub") }
-    public var starThanks: String { t("starThanks", "— thank you!") }
 
     // MARK: - Stats window
 
