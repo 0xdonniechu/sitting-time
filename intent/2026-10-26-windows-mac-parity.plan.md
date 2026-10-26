@@ -45,7 +45,8 @@ Intent: `intent/2026-10-26-windows-mac-parity.md`. Branch:
 8. `src/styles.css` — style views/rows/bars/footer/pill, light+dark,
    giữ minimal hiện có (không gradient chữ mới, không emoji làm icon chrome,
    tôn trọng prefers-reduced-motion đã có).
-9. Version 0.3.5 → 0.4.0 (`Cargo.toml`, `tauri.conf.json`, `package.json`);
+9. Version 0.3.5 → 1.1.8 (`Cargo.toml`, `tauri.conf.json`, `package.json`,
+   `package-lock.json`, `Cargo.lock`): Windows đi chung line version với Mac;
    `SPEC.md` + `README.md` mô tả stats/about/goal/language/zodiac.
 10. Commit: rust (stats+settings+timer+lunar+lib), frontend (strings+main+css),
     docs/version. Không push/merge.
