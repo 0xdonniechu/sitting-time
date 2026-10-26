@@ -641,9 +641,11 @@ func installVietnamesePackForTests() {
 
     @Test func elapsedFormatsLikeAClock() {
         #expect(formatElapsed(3661) == "1:01:01")
-        #expect(formatElapsed(61) == "1:01")
-        #expect(formatElapsed(5) == "0:05")
-        #expect(formatElapsed(0) == "0:00")
+        #expect(formatElapsed(61) == "01:01")
+        #expect(formatElapsed(5) == "00:05")
+        #expect(formatElapsed(0) == "00:00")
+        // Fixed width below an hour: skipping never resizes the status item.
+        #expect(formatElapsed(2671).count == formatElapsed(300).count)
     }
 
     @Test func durationFormatsInVietnamese() {

@@ -1,6 +1,9 @@
 import Foundation
 
-/// `"1:02:03"` for over an hour, `"02:03"` below an hour. Used for the live timer.
+/// `"1:02:03"` for over an hour, `"02:03"` below an hour. Minutes are
+/// zero-padded so the menu bar title keeps one width: without this, skipping
+/// from `"44:31"` to `"5:00"` shrinks the status item and the open popover
+/// visibly jumps to its new anchor. Used for the live timer.
 public func formatElapsed(_ seconds: TimeInterval) -> String {
     let total = max(0, Int(seconds.rounded()))
     let hours = total / 3600
@@ -9,7 +12,7 @@ public func formatElapsed(_ seconds: TimeInterval) -> String {
     if hours > 0 {
         return String(format: "%d:%02d:%02d", hours, minutes, secs)
     }
-    return String(format: "%d:%02d", minutes, secs)
+    return String(format: "%02d:%02d", minutes, secs)
 }
 
 /// `"2 giờ 15 phút"`, `"45 phút"`, `"30 giây"` (or the English equivalents
