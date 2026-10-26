@@ -260,3 +260,83 @@ button:focus-visible { outline: 3px solid color-mix(in srgb, var(--bright) 45%, 
   .settings-message { color: #a1a1a6; }
   .preview-button { background: #2c2c2e; border-color: #48484a; }
 }
+
+/* Dash today section: compact totals under the mode selector. */
+.today-section { margin-top: 18px; padding: 12px 14px 10px; border-radius: 10px; background: rgb(255 255 255 / 70%); border: 1px solid #e5e5ea; }
+.today-section h2 { margin: 0 0 8px; font-size: 10px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: var(--strong); }
+.today-rows { display: flex; flex-direction: column; gap: 5px; }
+.today-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #3a3a3c; }
+.today-row b { margin-left: auto; font-weight: 650; font-variant-numeric: tabular-nums; }
+.dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.dot-sit { background: #e8830c; }
+.dot-stand { background: #2da44e; }
+.dot-rest { background: #9aa0a6; }
+.breaks-line { margin: 8px 0 0; color: #8e8e93; font-size: 11px; }
+.goal-progress { margin-top: 10px; }
+.goal-bar { height: 6px; border-radius: 999px; overflow: hidden; background: color-mix(in srgb, var(--bright) 16%, #e5e5ea); }
+.goal-bar span { display: block; height: 100%; background: linear-gradient(90deg, var(--bright), var(--bright-2)); }
+.goal-progress p { margin: 5px 0 0; color: #6e6e73; font-size: 11px; }
+
+/* Icon footer: stats/settings/about buttons plus the donate pill. */
+.icon-footer { display: flex; align-items: center; gap: 4px; margin-top: 14px; }
+.footer-button { width: 32px; height: 32px; display: grid; place-items: center; border: 0; border-radius: 9px; padding: 7px; color: #6e6e73; background: transparent; cursor: pointer; }
+.footer-button svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+.footer-button:hover { color: var(--strong); background: color-mix(in srgb, var(--bright) 14%, transparent); }
+.footer-spacer { flex: 1; }
+.coffee-pill { border: 0; border-radius: 999px; padding: 6px 12px; color: #fff; background: #9e704a; font-size: 11px; font-weight: 650; cursor: pointer; white-space: nowrap; }
+.coffee-pill:hover { filter: brightness(1.08); }
+.coffee-pill.wide { width: 100%; height: 42px; font-size: 13px; margin-top: 9px; }
+
+/* Secondary views share the settings page frame. */
+.sub-view { width: 100%; height: 100vh; padding: 22px 24px 26px; overflow-y: auto; scrollbar-width: thin; }
+.scope-selector { display: flex; gap: 3px; margin-bottom: 14px; padding: 3px; border-radius: 10px; background: color-mix(in srgb, var(--bright) 10%, #e8e8ed); }
+.stats-total { margin: 0; font-size: 34px; font-weight: 650; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.stats-average { margin: 2px 0 0; color: #8e8e93; font-size: 12px; }
+.stats-empty { margin: 30px 0; color: #8e8e93; text-align: center; font-size: 13px; }
+.legend { display: flex; flex-direction: column; gap: 5px; margin: 12px 0; }
+.legend-row { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.legend-row b { margin-left: auto; font-weight: 650; font-variant-numeric: tabular-nums; }
+
+/* Stacked bar charts, pure CSS. Day scope: 24 hour columns. */
+.bars { position: relative; height: 150px; display: flex; align-items: stretch; gap: 2px; margin-top: 8px; padding-bottom: 30px; }
+.bar-col { flex: 1; position: relative; display: flex; flex-direction: column-reverse; min-width: 0; border-radius: 2px; background: color-mix(in srgb, var(--bright) 8%, transparent); }
+.bar-col span:not(.bar-label) { display: block; width: 100%; }
+.bar-col span:not(.bar-label):first-child { border-radius: 0 0 2px 2px; }
+.bars-axis { position: absolute; left: 0; right: 0; bottom: 14px; height: 0; }
+.bars-axis span { position: absolute; transform: translateX(-50%); color: #8e8e93; font-size: 10px; font-variant-numeric: tabular-nums; }
+.bars-unit { position: absolute; right: 0; bottom: -4px; margin: 0; color: #8e8e93; font-size: 10px; }
+.week-bars { padding-bottom: 22px; }
+.bar-label { position: absolute; bottom: -20px; left: 50%; transform: translateX(-50%); color: #6e6e73; font-size: 9.5px; white-space: nowrap; }
+
+.rows-title { margin: 16px 0 6px 4px; font-size: 10px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: var(--strong); }
+.week-row { display: flex; align-items: center; gap: 10px; padding: 7px 2px; font-size: 13px; font-variant-numeric: tabular-nums; }
+.week-day { width: 64px; flex: none; color: #3a3a3c; }
+.week-bar, .week-bar-empty { flex: 1; height: 8px; border-radius: 4px; overflow: hidden; display: flex; background: color-mix(in srgb, var(--bright) 10%, #e8e8ed); }
+.week-bar span { display: block; height: 100%; }
+.week-row b { width: 110px; flex: none; text-align: right; font-weight: 650; }
+
+.danger-zone { margin-top: 18px; display: flex; flex-direction: column; gap: 9px; }
+.danger-button { width: 100%; height: 42px; border-radius: 10px; font-weight: 650; cursor: pointer; color: #c62828; background: transparent; border: 1px solid color-mix(in srgb, #c62828 40%, transparent); }
+.danger-button:hover { background: color-mix(in srgb, #c62828 8%, transparent); }
+
+.link-row { width: 100%; min-height: 43px; display: flex; align-items: center; justify-content: space-between; padding: 7px 12px; border: 0; border-radius: 10px; background: rgb(255 255 255 / 80%); font-size: 13px; color: var(--strong); font-weight: 650; cursor: pointer; }
+.select-field select { border: 0; background: transparent; font: inherit; color: inherit; text-align: right; outline: 0; cursor: pointer; }
+.footer-note { margin: 14px 0 0; color: #8e8e93; text-align: center; font-size: 11px; line-height: 1.5; }
+
+.about-body h3 { margin: 4px 0 2px; font-size: 21px; font-weight: 650; letter-spacing: -.02em; }
+.about-version { margin: 0 0 8px; color: #8e8e93; font-size: 13px; font-variant-numeric: tabular-nums; }
+.about-madeby { margin: 0 0 14px; color: #6e6e73; font-size: 13px; }
+.text-link { border: 0; background: none; padding: 0; color: var(--strong); font: inherit; font-weight: 650; cursor: pointer; }
+.text-link:hover { text-decoration: underline; }
+
+.calendar-zodiac { font-size: 11px; line-height: 1; margin: 1px 0 4px; }
+
+@media (prefers-color-scheme: dark) {
+  .today-section { background: #2c2c2e; border-color: #3a3a3c; }
+  .today-row { color: #e5e5ea; }
+  .week-day { color: #e5e5ea; }
+  .link-row { background: #2c2c2e; }
+  .scope-selector { background: color-mix(in srgb, var(--bright) 10%, #2c2c2e); }
+  .danger-button { color: #ff6b6b; border-color: color-mix(in srgb, #ff6b6b 40%, transparent); }
+  .bar-label { color: #a1a1a6; }
+}

@@ -183,20 +183,53 @@ impl TimerEngine {
         self.remaining_ms = self.session_duration_seconds() * 1_000;
     }
 
+    /// Switches Stand Up / Pomodoro keeping the running session, like macOS:
+    /// work stays work, break stays break, and the clock keeps running. A
+    /// Pomodoro long break becomes Move in Stand Up (which has no long
+    /// break); the focus count resets to zero in Stand Up and carries over
+    /// to Pomodoro. When the carried elapsed time already exceeds the new
+    /// length, the next tick auto-advances.
     pub fn set_mode(&mut self, mode: TimerMode) {
         if self.selected_mode == mode {
             return;
         }
 
+        let now = epoch_ms();
+        let elapsed_ms = self
+            .session_duration_seconds()
+            .saturating_mul(1_000)
+            .saturating_sub(self.current_remaining_ms(now));
         self.selected_mode = mode;
-        self.session = match mode {
-            TimerMode::Pomodoro => SessionKind::Focus,
-            TimerMode::StandUp => SessionKind::Sitting,
+        self.session = match (mode, self.session) {
+            (TimerMode::StandUp, SessionKind::Focus | SessionKind::Sitting) => {
+                SessionKind::Sitting
+            }
+            (TimerMode::StandUp, _) => SessionKind::Move,
+            (TimerMode::Pomodoro, SessionKind::Sitting | SessionKind::Focus) => SessionKind::Focus,
+            (TimerMode::Pomodoro, SessionKind::Move | SessionKind::ShortBreak) => {
+                SessionKind::ShortBreak
+            }
+            (TimerMode::Pomodoro, SessionKind::LongBreak) => SessionKind::LongBreak,
         };
-        self.status = TimerStatus::Idle;
-        self.deadline_epoch_ms = None;
-        self.completed_focus_sessions = 0;
-        self.remaining_ms = self.session_duration_seconds() * 1_000;
+        if mode == TimerMode::StandUp {
+            self.completed_focus_sessions = 0;
+        }
+        let duration_ms = self.session_duration_seconds().saturating_mul(1_000);
+        let remaining_ms = duration_ms.saturating_sub(elapsed_ms);
+        match self.status {
+            TimerStatus::Running => {
+                self.remaining_ms = remaining_ms;
+                self.deadline_epoch_ms = Some(now.saturating_add(remaining_ms));
+            }
+            TimerStatus::Paused => {
+                self.remaining_ms = remaining_ms;
+                self.deadline_epoch_ms = None;
+            }
+            TimerStatus::Idle => {
+                self.remaining_ms = duration_ms;
+                self.deadline_epoch_ms = None;
+            }
+        }
     }
 
     pub fn tick(&mut self) -> bool {
@@ -270,7 +303,7 @@ impl TimerEngine {
     }
 }
 
-fn epoch_ms() -> u64 {
+pub(crate) fn epoch_ms() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default()
@@ -379,11 +412,63 @@ mod tests {
     }
 
     #[test]
-    fn mode_change_resets_to_sitting() {
+    fn mode_change_keeps_the_running_session() {
+        let mut engine = running_engine(TimerMode::StandUp);
+        // Ten minutes into a 45-minute sit.
+        engine.deadline_epoch_ms = Some(epoch_ms() + (45 * 60 - 600) * 1_000);
+        engine.set_mode(TimerMode::Pomodoro);
+        let snapshot = engine.snapshot();
+        assert_eq!(snapshot.session, SessionKind::Focus);
+        assert_eq!(snapshot.status, TimerStatus::Running);
+        // Carried elapsed: about 15:00 left of a 25-minute focus.
+        assert!((880..=900).contains(&snapshot.remaining_seconds));
+    }
+
+    #[test]
+    fn mode_change_maps_break_to_break() {
+        let mut engine = running_engine(TimerMode::Pomodoro);
+        engine.skip();
+        assert_eq!(engine.session, SessionKind::ShortBreak);
+        engine.start();
+        engine.set_mode(TimerMode::StandUp);
+        let snapshot = engine.snapshot();
+        assert_eq!(snapshot.session, SessionKind::Move);
+        assert_eq!(snapshot.status, TimerStatus::Running);
+    }
+
+    #[test]
+    fn mode_change_resets_completed_count_only_in_stand_up() {
+        let mut engine = TimerEngine::default();
+        engine.skip();
+        engine.skip();
+        assert_eq!(engine.snapshot().completed_focus_sessions, 1);
+        engine.set_mode(TimerMode::StandUp);
+        assert_eq!(engine.snapshot().completed_focus_sessions, 0);
+        engine.set_mode(TimerMode::Pomodoro);
+        engine.skip();
+        engine.skip();
+        assert_eq!(engine.snapshot().completed_focus_sessions, 1);
+    }
+
+    #[test]
+    fn mode_change_while_idle_starts_fresh() {
         let mut engine = TimerEngine::default();
         engine.set_mode(TimerMode::StandUp);
         let snapshot = engine.snapshot();
         assert_eq!(snapshot.session, SessionKind::Sitting);
+        assert_eq!(snapshot.status, TimerStatus::Idle);
         assert_eq!(snapshot.remaining_seconds, 45 * 60);
+    }
+
+    #[test]
+    fn mode_change_overshoot_advances_on_next_tick() {
+        let mut engine = running_engine(TimerMode::StandUp);
+        // Thirty minutes into a 45-minute sit, then switch to a 25-minute
+        // focus: the carried elapsed already exceeds the new length.
+        engine.deadline_epoch_ms = Some(epoch_ms() + 15 * 60 * 1_000);
+        engine.set_mode(TimerMode::Pomodoro);
+        assert_eq!(engine.snapshot().remaining_seconds, 0);
+        assert!(engine.tick());
+        assert_eq!(engine.session, SessionKind::ShortBreak);
     }
 }

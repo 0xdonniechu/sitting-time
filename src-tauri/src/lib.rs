@@ -1,9 +1,12 @@
 mod facts;
 mod lunar;
+mod notify;
 mod settings;
+mod stats;
 mod timer;
 
-use settings::{GeneralSettings, SettingsPayload};
+use settings::{AppLanguage, GeneralSettings, SettingsPayload};
+use stats::{DayRecord, StatsStore, WeekDay};
 use std::{
     fs,
     io::Write,
@@ -18,7 +21,7 @@ use tauri::{
     AppHandle, Emitter, Manager, WindowEvent,
 };
 use tauri_plugin_notification::NotificationExt;
-use timer::{SessionKind, TimerEngine, TimerMode, TimerSnapshot};
+use timer::{epoch_ms, SessionKind, TimerEngine, TimerMode, TimerSnapshot};
 
 #[derive(Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -34,7 +37,12 @@ struct ReminderAlert {
 struct AppState {
     timer: Mutex<TimerEngine>,
     general: Mutex<GeneralSettings>,
+    stats: Mutex<StatsStore>,
     config_path: PathBuf,
+}
+
+fn is_work_session(session: SessionKind) -> bool {
+    matches!(session, SessionKind::Focus | SessionKind::Sitting)
 }
 
 fn show_window(app: &AppHandle) {
@@ -57,7 +65,52 @@ fn persist(app: &AppHandle) -> Result<(), String> {
     let state = app.state::<AppState>();
     let timer = state.timer.lock().map_err(|_| "Timer state is unavailable")?;
     let general = state.general.lock().map_err(|_| "Settings are unavailable")?;
-    settings::save(&state.config_path, &timer, &general)
+    let stats = state.stats.lock().map_err(|_| "Stats are unavailable")?;
+    settings::save(&state.config_path, &timer, &general, &stats)
+}
+
+/// Re-attributes the open stats segment to the engine's current state.
+/// Called after every engine mutation; cheap when nothing changed.
+fn sync_phase(app: &AppHandle) {
+    if let Some(current) = snapshot(app) {
+        if let Ok(mut stats) = app.state::<AppState>().stats.lock() {
+            stats.set_phase(
+                epoch_ms(),
+                stats::phase_for(current.status, current.session),
+            );
+        }
+    }
+}
+
+/// Ticks the engine and folds the outcome into stats: the elapsed time is
+/// attributed, a work session that auto-advanced counts as a break, and the
+/// state is persisted + notified on transitions. Returns None only when the
+/// timer lock is gone.
+fn tick_and_sync(app: &AppHandle) -> Option<TimerSnapshot> {
+    let now = epoch_ms();
+    let (transitioned, prev_session, snapshot) = {
+        let state = app.state::<AppState>();
+        let mut engine = state.timer.lock().ok()?;
+        let prev_session = engine.snapshot().session;
+        let transitioned = engine.tick();
+        (transitioned, prev_session, engine.snapshot())
+    };
+    if let Ok(mut stats) = app.state::<AppState>().stats.lock() {
+        // Sessions a sleep catch-up skipped through never happened for the
+        // user: no breaks for the discarded gap (macOS counts none either).
+        // Without a gap at most one session can elapse between attributions,
+        // so one break per completed work session holds exactly.
+        let gapped = stats.gap_since_last(now);
+        stats.set_phase(now, stats::phase_for(snapshot.status, snapshot.session));
+        if transitioned && !gapped && is_work_session(prev_session) {
+            stats.note_auto_break();
+        }
+    }
+    if transitioned {
+        let _ = persist(app);
+        notify_session(app, snapshot.session);
+    }
+    Some(snapshot)
 }
 
 fn emit_snapshot(app: &AppHandle) {
@@ -70,6 +123,7 @@ fn mutate_timer(app: &AppHandle, action: impl FnOnce(&mut TimerEngine)) {
     if let Ok(mut engine) = app.state::<AppState>().timer.lock() {
         action(&mut engine);
     }
+    sync_phase(app);
     let _ = persist(app);
     emit_snapshot(app);
 }
@@ -81,13 +135,8 @@ fn notify_session(app: &AppHandle, session: SessionKind) {
         .map(|settings| settings.clone())
         .unwrap_or_default();
 
-    let (title, body) = match session {
-        SessionKind::Focus => ("Break complete", "Ready for another focus session"),
-        SessionKind::ShortBreak => ("Focus session complete", "Take a short break"),
-        SessionKind::LongBreak => ("Focus cycle complete", "Take a long break"),
-        SessionKind::Sitting => ("Break complete", "You can return to work"),
-        SessionKind::Move => ("Time to stand up", "Move around for a few minutes"),
-    };
+    let vietnamese = settings.language == AppLanguage::Vietnamese;
+    let (title, body) = notify::session_alert(session, vietnamese);
 
     if settings.notifications_enabled {
         let _ = app.notification().builder().title(title).body(body).show();
@@ -130,17 +179,7 @@ fn get_calendar_day() -> lunar::CalendarDay {
 
 #[tauri::command]
 fn get_timer_state(app: AppHandle) -> Result<TimerSnapshot, String> {
-    let transitioned = app.state::<AppState>()
-        .timer
-        .lock()
-        .map(|mut engine| engine.tick())
-        .map_err(|_| "Timer state is unavailable".to_string())?;
-    let current = snapshot(&app).ok_or_else(|| "Timer state is unavailable".to_string())?;
-    if transitioned {
-        let _ = persist(&app);
-        notify_session(&app, current.session);
-    }
-    Ok(current)
+    tick_and_sync(&app).ok_or_else(|| "Timer state is unavailable".to_string())
 }
 
 #[tauri::command]
@@ -192,28 +231,140 @@ fn save_settings(app: AppHandle, settings: SettingsPayload) -> Result<TimerSnaps
             .update_settings(settings.timer_settings());
         *state.general.lock().map_err(|_| "Settings are unavailable")? = settings.general_settings();
     }
+    // A changed duration resets the engine to idle; re-attribute either way.
+    sync_phase(&app);
     persist(&app)?;
     emit_snapshot(&app);
     snapshot(&app).ok_or_else(|| "Timer state is unavailable".to_string())
 }
 
+#[derive(Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct StatsSnapshot {
+    today: DayRecord,
+    week: Vec<WeekDay>,
+}
+
+#[tauri::command]
+fn get_stats(app: AppHandle) -> Result<StatsSnapshot, String> {
+    let state = app.state::<AppState>();
+    let vietnamese = state
+        .general
+        .lock()
+        .map(|general| general.language == AppLanguage::Vietnamese)
+        .unwrap_or(false);
+    let stats = state.stats.lock().map_err(|_| "Stats are unavailable")?;
+    let now = epoch_ms();
+    Ok(StatsSnapshot {
+        today: stats.live_today(now),
+        week: stats.week(now, vietnamese),
+    })
+}
+
+#[tauri::command]
+fn reset_today(app: AppHandle) -> Result<StatsSnapshot, String> {
+    if let Ok(mut stats) = app.state::<AppState>().stats.lock() {
+        stats.reset_today(epoch_ms());
+    }
+    let _ = persist(&app);
+    get_stats(app)
+}
+
+#[tauri::command]
+fn clear_history(app: AppHandle) -> Result<StatsSnapshot, String> {
+    if let Ok(mut stats) = app.state::<AppState>().stats.lock() {
+        stats.clear_history(epoch_ms());
+    }
+    let _ = persist(&app);
+    get_stats(app)
+}
+
+#[derive(Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AppInfo {
+    version: String,
+    author: String,
+    author_url: String,
+    bug_url: String,
+    donate_url: String,
+}
+
+#[tauri::command]
+fn get_app_info() -> AppInfo {
+    AppInfo {
+        version: env!("CARGO_PKG_VERSION").to_string(),
+        author: "0xdonniechu".to_string(),
+        author_url: "https://github.com/0xdonniechu".to_string(),
+        bug_url: "https://github.com/0xdonniechu/sitting-time/issues/new".to_string(),
+        donate_url: "https://ko-fi.com/0xdonniechu".to_string(),
+    }
+}
+
+/// Fires the standing-goal notification once per day when the goal is met.
+/// Silent when notifications are off or the goal is disabled (0).
+fn check_goal(app: &AppHandle) {
+    let state = app.state::<AppState>();
+    let (goal_minutes, vietnamese, notifications_on) = match state.general.lock() {
+        Ok(general) => (
+            general.stand_goal_minutes,
+            general.language == AppLanguage::Vietnamese,
+            general.notifications_enabled,
+        ),
+        Err(_) => return,
+    };
+    if goal_minutes == 0 || !notifications_on {
+        return;
+    }
+    let now = epoch_ms();
+    let mut stats = match state.stats.lock() {
+        Ok(stats) => stats,
+        Err(_) => return,
+    };
+    let today = stats.live_today(now);
+    if today.standing_seconds < u64::from(goal_minutes) * 60 {
+        return;
+    }
+    if stats.goal_notified_for() == Some(today.date_key.as_str()) {
+        return;
+    }
+    stats.mark_goal_notified(today.date_key.clone());
+    drop(stats);
+    let goal = notify::format_goal(goal_minutes, vietnamese);
+    let (title, body) = if vietnamese {
+        (
+            "Đạt mục tiêu đứng hôm nay!",
+            format!("Bạn đã đứng {goal}. Tuyệt vời!"),
+        )
+    } else {
+        (
+            "Daily standing goal reached!",
+            format!("You stood {goal}. Well done!"),
+        )
+    };
+    let _ = app.notification().builder().title(title).body(body).show();
+    let _ = persist(app);
+}
+
 fn start_timer_worker(app: AppHandle) {
     thread::spawn(move || {
         let mut previous: Option<TimerSnapshot> = None;
+        let mut ticks: u64 = 0;
         loop {
             thread::sleep(Duration::from_millis(200));
-            if let Ok(mut engine) = app.state::<AppState>().timer.lock() {
-                let transitioned = engine.tick();
-                let current = engine.snapshot();
-                if previous.as_ref() != Some(&current) {
-                    previous = Some(current.clone());
-                    drop(engine);
-                    if transitioned {
-                        let _ = persist(&app);
-                        notify_session(&app, current.session);
-                    }
-                    let _ = app.emit("timer-state", current);
-                }
+            let Some(current) = tick_and_sync(&app) else {
+                continue;
+            };
+            ticks += 1;
+            // Checkpoint stats to disk about every 30 s so an abrupt quit
+            // loses at most half a minute of history; the countdown itself
+            // stays deadline-based and never writes per second.
+            if ticks.is_multiple_of(150) {
+                let _ = persist(&app);
+            }
+            check_goal(&app);
+            if previous.as_ref() != Some(&current) {
+                previous = Some(current.clone());
+                let _ = app.emit("timer-state", current);
             }
         }
     });
@@ -258,6 +409,7 @@ pub fn run() {
     log_panics_to_file(context.config().identifier.clone());
     tauri::Builder::default()
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             Some(vec![]),
@@ -273,7 +425,11 @@ pub fn run() {
             save_settings,
             dismiss_reminder,
             preview_reminder,
-            get_calendar_day
+            get_calendar_day,
+            get_stats,
+            reset_today,
+            clear_history,
+            get_app_info
         ])
         .setup(|app| {
             let config_dir = app.path().app_config_dir()?;
@@ -292,6 +448,7 @@ pub fn run() {
             app.manage(AppState {
                 timer: Mutex::new(restored.timer),
                 general: Mutex::new(restored.general),
+                stats: Mutex::new(restored.stats),
                 config_path,
             });
 

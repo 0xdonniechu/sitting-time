@@ -1,9 +1,28 @@
+use crate::stats::StatsStore;
 use crate::timer::{
     TimerEngine, TimerSettings, MAX_DURATION_MINUTES, MAX_SESSIONS_BEFORE_LONG_BREAK,
     MIN_DURATION_MINUTES, MIN_SESSIONS_BEFORE_LONG_BREAK,
 };
 use serde::{Deserialize, Serialize};
 use std::{fs, io::Write, path::Path};
+
+pub const MIN_STAND_GOAL_MINUTES: u32 = 0;
+pub const MAX_STAND_GOAL_MINUTES: u32 = 600;
+
+/// UI + notification language. Serialized as short codes so `state.json`
+/// stays compact.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize, Serialize)]
+pub enum AppLanguage {
+    #[default]
+    #[serde(rename = "en")]
+    English,
+    #[serde(rename = "vi")]
+    Vietnamese,
+}
+
+fn default_stand_goal_minutes() -> u32 {
+    60
+}
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", default)]
@@ -14,6 +33,9 @@ pub struct GeneralSettings {
     pub alert_sound_enabled: bool,
     pub health_facts_enabled: bool,
     pub start_minimized_to_tray: bool,
+    pub language: AppLanguage,
+    #[serde(default = "default_stand_goal_minutes")]
+    pub stand_goal_minutes: u32,
 }
 
 impl Default for GeneralSettings {
@@ -25,6 +47,8 @@ impl Default for GeneralSettings {
             alert_sound_enabled: true,
             health_facts_enabled: true,
             start_minimized_to_tray: false,
+            language: AppLanguage::English,
+            stand_goal_minutes: default_stand_goal_minutes(),
         }
     }
 }
@@ -44,6 +68,10 @@ pub struct SettingsPayload {
     pub alert_sound_enabled: bool,
     pub health_facts_enabled: bool,
     pub start_minimized_to_tray: bool,
+    #[serde(default)]
+    pub language: AppLanguage,
+    #[serde(default = "default_stand_goal_minutes")]
+    pub stand_goal_minutes: u32,
 }
 
 impl SettingsPayload {
@@ -67,6 +95,19 @@ impl SettingsPayload {
                 "Long-break cycle must be between {MIN_SESSIONS_BEFORE_LONG_BREAK} and {MAX_SESSIONS_BEFORE_LONG_BREAK} sessions"
             ));
         }
+        let goal = MIN_STAND_GOAL_MINUTES..=MAX_STAND_GOAL_MINUTES;
+        if !goal.contains(&self.stand_goal_minutes) {
+            return Err(format!(
+                "Standing goal must be between {} and {} minutes (0 disables it)",
+                MIN_STAND_GOAL_MINUTES, MAX_STAND_GOAL_MINUTES
+            ));
+        }
+        // The language is an enum, so anything that deserializes is valid by
+        // construction; this exhaustive match pins the accepted set — adding
+        // a variant without handling it here fails the build.
+        match self.language {
+            AppLanguage::English | AppLanguage::Vietnamese => {}
+        }
         Ok(())
     }
 
@@ -89,6 +130,8 @@ impl SettingsPayload {
             alert_sound_enabled: self.alert_sound_enabled,
             health_facts_enabled: self.health_facts_enabled,
             start_minimized_to_tray: self.start_minimized_to_tray,
+            language: self.language,
+            stand_goal_minutes: self.stand_goal_minutes,
         }
     }
 }
@@ -108,6 +151,8 @@ pub fn payload(timer: &TimerEngine, general: &GeneralSettings) -> SettingsPayloa
         alert_sound_enabled: general.alert_sound_enabled,
         health_facts_enabled: general.health_facts_enabled,
         start_minimized_to_tray: general.start_minimized_to_tray,
+        language: general.language,
+        stand_goal_minutes: general.stand_goal_minutes,
     }
 }
 
@@ -116,6 +161,7 @@ pub fn payload(timer: &TimerEngine, general: &GeneralSettings) -> SettingsPayloa
 pub struct PersistedAppState {
     pub timer: TimerEngine,
     pub general: GeneralSettings,
+    pub stats: StatsStore,
 }
 
 /// Loads saved state. A file that exists but cannot be parsed is copied to
@@ -132,13 +178,19 @@ pub fn load(path: &Path) -> PersistedAppState {
     state
 }
 
-pub fn save(path: &Path, timer: &TimerEngine, general: &GeneralSettings) -> Result<(), String> {
+pub fn save(
+    path: &Path,
+    timer: &TimerEngine,
+    general: &GeneralSettings,
+    stats: &StatsStore,
+) -> Result<(), String> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).map_err(|error| error.to_string())?;
     }
     let value = PersistedAppState {
         timer: timer.clone(),
         general: general.clone(),
+        stats: stats.clone(),
     };
     let contents = serde_json::to_string_pretty(&value).map_err(|error| error.to_string())?;
     // Write a sibling file and rename it over the old one, so a crash mid-write
@@ -173,7 +225,7 @@ mod tests {
             start_minimized_to_tray: true,
             ..GeneralSettings::default()
         };
-        save(&path, &timer, &general).unwrap();
+        save(&path, &timer, &general, &StatsStore::default()).unwrap();
         let restored = load(&path);
         assert_eq!(restored.timer.snapshot(), timer.snapshot());
         assert!(restored.general.start_minimized_to_tray);
@@ -199,7 +251,13 @@ mod tests {
         let mut timer = TimerEngine::default();
         timer.set_mode(TimerMode::StandUp);
         timer.start();
-        save(&path, &timer, &GeneralSettings::default()).unwrap();
+        save(
+            &path,
+            &timer,
+            &GeneralSettings::default(),
+            &StatsStore::default(),
+        )
+        .unwrap();
         let contents = fs::read_to_string(&path)
             .unwrap()
             .replace("\"sittingSeconds\": 2700", "\"sittingSeconds\": 0");
@@ -221,7 +279,13 @@ mod tests {
             start_minimized_to_tray: true,
             ..GeneralSettings::default()
         };
-        save(&path, &TimerEngine::default(), &general).unwrap();
+        save(
+            &path,
+            &TimerEngine::default(),
+            &general,
+            &StatsStore::default(),
+        )
+        .unwrap();
         let contents = fs::read_to_string(&path)
             .unwrap()
             .replace("\"healthFactsEnabled\": true,", "");
@@ -241,5 +305,62 @@ mod tests {
         let restored = load(&path);
         assert_eq!(restored.timer.snapshot(), TimerEngine::default().snapshot());
         assert!(!path.with_extension("json.corrupt").exists());
+    }
+
+    #[test]
+    fn state_saved_before_language_and_goal_loads_with_defaults() {
+        let path = temp_state_path("pre-lang-goal");
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        save(
+            &path,
+            &TimerEngine::default(),
+            &GeneralSettings::default(),
+            &StatsStore::default(),
+        )
+        .unwrap();
+        let contents = fs::read_to_string(&path)
+            .unwrap()
+            .replace("    \"language\": \"en\",\n", "")
+            .replace(",\n    \"standGoalMinutes\": 60", "");
+        assert!(!contents.contains("standGoalMinutes"));
+        assert!(!contents.contains("\"language\""));
+        fs::write(&path, contents).unwrap();
+        let restored = load(&path);
+        assert_eq!(restored.general.language, AppLanguage::English);
+        assert_eq!(restored.general.stand_goal_minutes, 60);
+        assert!(!path.with_extension("json.corrupt").exists());
+        let _ = fs::remove_dir_all(path.parent().unwrap());
+    }
+
+    #[test]
+    fn out_of_range_goal_is_rejected() {
+        let timer = TimerEngine::default();
+        let general = GeneralSettings::default();
+        let mut good = payload(&timer, &general);
+        good.stand_goal_minutes = 600;
+        assert!(good.validate().is_ok());
+        good.stand_goal_minutes = 601;
+        assert!(good.validate().is_err());
+    }
+
+    #[test]
+    fn stats_round_trip_with_settings() {
+        use crate::stats::{Phase, StatsStore};
+        let path = temp_state_path("stats-round-trip");
+        let mut stats = StatsStore::default();
+        stats.set_phase(1_792_990_800_000, Some(Phase::Sitting));
+        stats.set_phase(1_792_990_800_000 + 60_000, Some(Phase::Sitting));
+        stats.set_phase(1_792_990_800_000 + 120_000, Some(Phase::Paused));
+        save(
+            &path,
+            &TimerEngine::default(),
+            &GeneralSettings::default(),
+            &stats,
+        )
+        .unwrap();
+        let restored = load(&path);
+        let today = restored.stats.live_today(1_792_990_800_000 + 120_000);
+        assert_eq!(today.sitting_seconds, 120);
+        let _ = fs::remove_dir_all(path.parent().unwrap());
     }
 }

@@ -8,6 +8,12 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 const TIME_ZONE_HOURS: f64 = 7.0;
 const JULIAN_DAY_OF_UNIX_EPOCH: i64 = 2_440_588;
+
+/// Whole UTC+7 days since the Unix epoch: the shared day counter behind both
+/// the calendar tile and the stats day keys.
+pub(crate) fn utc7_day_count(epoch_ms: u64) -> i64 {
+    (epoch_ms as i64 + TIME_ZONE_HOURS as i64 * 3_600_000).div_euclid(86_400_000)
+}
 const CAN: [&str; 10] = ["Giáp", "Ất", "Bính", "Đinh", "Mậu", "Kỷ", "Canh", "Tân", "Nhâm", "Quý"];
 const CHI: [&str; 12] = ["Tý", "Sửu", "Dần", "Mão", "Thìn", "Tỵ", "Ngọ", "Mùi", "Thân", "Dậu", "Tuất", "Hợi"];
 
@@ -26,6 +32,43 @@ pub struct CalendarDay {
     pub lunar_year: i32,
     pub lunar_leap: bool,
     pub lunar_year_name: String,
+    pub zodiac_animal: ZodiacAnimal,
+}
+
+/// Zodiac animal of the lunar year, in can-chi branch order (Tý is the rat,
+/// Hợi the pig). Serialized for the calendar tile.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ZodiacAnimal {
+    Rat,
+    Ox,
+    Tiger,
+    Rabbit,
+    Dragon,
+    Snake,
+    Horse,
+    Goat,
+    Monkey,
+    Rooster,
+    Dog,
+    Pig,
+}
+
+fn zodiac_animal(year: i32) -> ZodiacAnimal {
+    match (year + 8).rem_euclid(12) {
+        0 => ZodiacAnimal::Rat,
+        1 => ZodiacAnimal::Ox,
+        2 => ZodiacAnimal::Tiger,
+        3 => ZodiacAnimal::Rabbit,
+        4 => ZodiacAnimal::Dragon,
+        5 => ZodiacAnimal::Snake,
+        6 => ZodiacAnimal::Horse,
+        7 => ZodiacAnimal::Goat,
+        8 => ZodiacAnimal::Monkey,
+        9 => ZodiacAnimal::Rooster,
+        10 => ZodiacAnimal::Dog,
+        _ => ZodiacAnimal::Pig,
+    }
 }
 
 pub fn today() -> CalendarDay {
@@ -54,6 +97,7 @@ pub fn calendar_day(epoch_ms: u64) -> CalendarDay {
         lunar_year: lunar.year,
         lunar_leap: lunar.leap,
         lunar_year_name: year_name(lunar.year),
+        zodiac_animal: zodiac_animal(lunar.year),
     }
 }
 
@@ -73,7 +117,7 @@ fn iso_week(days: i64) -> u32 {
 }
 
 /// Howard Hinnant's days-since-1970 to proleptic Gregorian (year, month, day).
-fn civil_from_days(days: i64) -> (i32, u32, u32) {
+pub(crate) fn civil_from_days(days: i64) -> (i32, u32, u32) {
     let z = days + 719_468;
     let era = z.div_euclid(146_097);
     let doe = z.rem_euclid(146_097);
@@ -311,5 +355,25 @@ mod tests {
         assert_eq!((before.solar_day, before.solar_month, before.solar_year), (15, 10, 2026));
         assert_eq!((after.solar_day, after.solar_month, after.solar_year), (16, 10, 2026));
         assert_eq!(after.weekday, 5);
+    }
+
+    #[test]
+    fn zodiac_follows_the_lunar_branch() {
+        let animal = |y, m, d| calendar_day(local_midnight(y, m, d)).zodiac_animal;
+        assert_eq!(animal(2026, 6, 1), ZodiacAnimal::Horse);
+        assert_eq!(animal(2024, 6, 1), ZodiacAnimal::Dragon);
+        assert_eq!(animal(2025, 6, 1), ZodiacAnimal::Snake);
+        assert_eq!(animal(2020, 6, 1), ZodiacAnimal::Rat);
+    }
+
+    #[test]
+    fn utc7_day_count_matches_calendar_days() {
+        // 2026-10-26T00:00+07:00 is the UTC+7 day holding BASE noon stats.
+        let midnight = local_midnight(2026, 10, 26);
+        assert_eq!(
+            utc7_day_count(midnight),
+            utc7_day_count(midnight + 86_400_000 - 1)
+        );
+        assert_eq!(utc7_day_count(midnight - 1) + 1, utc7_day_count(midnight));
     }
 }
