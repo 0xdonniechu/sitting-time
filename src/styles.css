@@ -326,12 +326,23 @@ button:focus-visible { outline: 3px solid color-mix(in srgb, var(--bright) 45%, 
 .about-body h3 { margin: 4px 0 2px; font-size: 21px; font-weight: 650; letter-spacing: -.02em; }
 .about-version { margin: 0 0 8px; color: #8e8e93; font-size: 13px; font-variant-numeric: tabular-nums; }
 .about-madeby { margin: 0 0 14px; color: #6e6e73; font-size: 13px; }
+.about-star { margin: 0 0 14px; color: #6e6e73; font-size: 13px; line-height: 1.5; }
 .text-link { border: 0; background: none; padding: 0; color: var(--strong); font: inherit; font-weight: 650; cursor: pointer; }
 .text-link:hover { text-decoration: underline; }
 
 .calendar-zodiac { font-size: 11px; line-height: 1; margin: 1px 0 4px; }
 
+/* First-run welcome: the landing-page meme, shown once per install. */
+.welcome-body { display: flex; flex-direction: column; gap: 12px; padding-top: 6px; }
+.welcome-meme { margin: 0; border-radius: 12px; overflow: hidden; border: 1px solid #e5e5ea; line-height: 0; background: #fff; }
+.welcome-meme img { display: block; width: 100%; height: auto; max-height: 320px; object-fit: contain; }
+.welcome-title { margin: 4px 0 0; font-size: 19px; font-weight: 650; letter-spacing: -.02em; }
+.welcome-text { margin: 0; color: #6e6e73; font-size: 13px; line-height: 1.55; }
+.welcome-body .save-button { margin-top: 4px; }
+
 @media (prefers-color-scheme: dark) {
+  .welcome-meme { background: #2c2c2e; border-color: #3a3a3c; }
+  .welcome-text { color: #a1a1a6; }
   .today-section { background: #2c2c2e; border-color: #3a3a3c; }
   .today-row { color: #e5e5ea; }
   .week-day { color: #e5e5ea; }

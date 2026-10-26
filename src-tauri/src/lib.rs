@@ -287,6 +287,7 @@ struct AppInfo {
     author_url: String,
     bug_url: String,
     donate_url: String,
+    repo_url: String,
 }
 
 #[tauri::command]
@@ -297,6 +298,7 @@ fn get_app_info() -> AppInfo {
         author_url: "https://github.com/0xdonniechu".to_string(),
         bug_url: "https://github.com/0xdonniechu/sitting-time/issues/new".to_string(),
         donate_url: "https://ko-fi.com/0xdonniechu".to_string(),
+        repo_url: "https://github.com/0xdonniechu/sitting-time".to_string(),
     }
 }
 
@@ -437,13 +439,20 @@ pub fn run() {
             let legacy_path = config_dir
                 .parent()
                 .map(|parent| parent.join("com.donniechu.productivitytray").join("state.json"));
-            let restored = if config_path.exists() {
+            let returning_user =
+                config_path.exists() || legacy_path.as_ref().is_some_and(|path| path.exists());
+            let mut restored = if config_path.exists() {
                 settings::load(&config_path)
             } else if let Some(path) = legacy_path.filter(|path| path.exists()) {
                 settings::load(&path)
             } else {
                 settings::PersistedAppState::default()
             };
+            // A state file from before the welcome screen existed means an
+            // upgrade, not a first install: never show the meme to upgraders.
+            if returning_user {
+                restored.general.welcomed = true;
+            }
             let start_minimized = restored.general.start_minimized_to_tray;
             app.manage(AppState {
                 timer: Mutex::new(restored.timer),

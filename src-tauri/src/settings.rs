@@ -36,6 +36,11 @@ pub struct GeneralSettings {
     pub language: AppLanguage,
     #[serde(default = "default_stand_goal_minutes")]
     pub stand_goal_minutes: u32,
+    /// True once the first-run welcome (meme) was dismissed. Fresh installs
+    /// start false; upgrades from a state file that predates this field are
+    /// treated as already welcomed (see `run` in lib.rs).
+    #[serde(default)]
+    pub welcomed: bool,
 }
 
 impl Default for GeneralSettings {
@@ -49,6 +54,7 @@ impl Default for GeneralSettings {
             start_minimized_to_tray: false,
             language: AppLanguage::English,
             stand_goal_minutes: default_stand_goal_minutes(),
+            welcomed: false,
         }
     }
 }
@@ -72,6 +78,8 @@ pub struct SettingsPayload {
     pub language: AppLanguage,
     #[serde(default = "default_stand_goal_minutes")]
     pub stand_goal_minutes: u32,
+    #[serde(default)]
+    pub welcomed: bool,
 }
 
 impl SettingsPayload {
@@ -132,6 +140,7 @@ impl SettingsPayload {
             start_minimized_to_tray: self.start_minimized_to_tray,
             language: self.language,
             stand_goal_minutes: self.stand_goal_minutes,
+            welcomed: self.welcomed,
         }
     }
 }
@@ -153,6 +162,7 @@ pub fn payload(timer: &TimerEngine, general: &GeneralSettings) -> SettingsPayloa
         start_minimized_to_tray: general.start_minimized_to_tray,
         language: general.language,
         stand_goal_minutes: general.stand_goal_minutes,
+        welcomed: general.welcomed,
     }
 }
 
