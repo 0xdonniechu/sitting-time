@@ -156,7 +156,6 @@ struct MenuBarView: View {
                     .fixedSize(horizontal: true, vertical: false)
                 }
                 .help("Buy me a coffee")
-                Spacer(minLength: 0)
                 Button(action: { NSApplication.shared.terminate(nil) }) {
                     Image(systemName: "power")
                 }
