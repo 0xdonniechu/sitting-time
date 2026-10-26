@@ -21,10 +21,11 @@ public enum SitPhase: String, Codable, Sendable, CaseIterable {
         Strings(language).phaseTitle(self)
     }
 
-    /// SF Symbol shown in the menu bar and UI. All three exist since SF Symbols 4.
+    /// SF Symbol shown in compact UI. Sitting returns the laptop half; rich UI
+    /// uses the person+laptop composite instead. All three exist since SF Symbols 4.
     public var symbol: String {
         switch self {
-        case .sitting: return "chair"
+        case .sitting: return "laptopcomputer"
         case .standing: return "figure.stand"
         case .paused: return "pause.circle"
         }

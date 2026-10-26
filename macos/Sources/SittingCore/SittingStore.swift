@@ -136,6 +136,7 @@ public final class SittingStore {
         if !self.paused {
             self.continuousSitStartedAt = nowDate
         }
+        refreshLanguagePackStatus()
     }
 
     /// Production store: real clock, real idle monitor, real notifications, disk
@@ -319,6 +320,41 @@ public final class SittingStore {
     /// and a skipped work session does not count as a completed stand-up.
     public func skipSession() {
         advance(manual: true)
+    }
+
+    // MARK: - Language pack
+
+    /// Vietnamese pack state for the Settings language rows. Refreshed on
+    /// init, when Settings appears, and after download/delete.
+    public private(set) var vietnamesePackInstalled = false
+    public private(set) var vietnamesePackBytes = 0
+
+    public func refreshLanguagePackStatus() {
+        vietnamesePackInstalled = LanguagePacks.isInstalled()
+        vietnamesePackBytes = LanguagePacks.installedBytes() ?? 0
+    }
+
+    /// Downloads the Vietnamese pack and switches to it. Returns a localized
+    /// error line on failure, nil on success.
+    public func downloadVietnamesePack() async -> String? {
+        do {
+            _ = try await LanguagePacks.download()
+        } catch {
+            return Strings(settings.language).downloadFailed(error.localizedDescription)
+        }
+        refreshLanguagePackStatus()
+        settings.language = .vietnamese
+        return nil
+    }
+
+    /// Deletes the downloaded pack, freeing its bytes. Falls back to English
+    /// when Vietnamese was active.
+    public func deleteVietnamesePack() {
+        LanguagePacks.remove()
+        if settings.language == .vietnamese {
+            settings.language = .english
+        }
+        refreshLanguagePackStatus()
     }
 
     private func pause(manual: Bool) {

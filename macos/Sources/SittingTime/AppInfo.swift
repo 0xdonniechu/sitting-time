@@ -10,4 +10,7 @@ enum AppInfo {
         if let short, let build { return "\(short) (\(build))" }
         return "dev"
     }
+
+    /// Donation page. Placeholder homepage until the real handle lands.
+    static let donateURL = URL(string: "https://www.buymeacoffee.com/")!
 }

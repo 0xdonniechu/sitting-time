@@ -7,6 +7,9 @@ struct StatsView: View {
     // From .environment(store): see MenuBarView.
     @Environment(SittingStore.self) private var store
 
+    /// Closes the window and reopens the popover dash. Nil hides the button.
+    var onReturnToDash: (() -> Void)?
+
     var body: some View {
         let _ = store.tickCount
         let lang = store.settings.language
@@ -15,6 +18,12 @@ struct StatsView: View {
         let totalSit = week.reduce(0) { $0 + $1.sittingSeconds }
         let totalStand = week.reduce(0) { $0 + $1.standingSeconds }
         VStack(alignment: .leading, spacing: 12) {
+            if let onReturnToDash {
+                Button(action: onReturnToDash) {
+                    Label(strings.backButton, systemImage: "chevron.left")
+                }
+                .buttonStyle(.link)
+            }
             Text(strings.weekTitle)
                 .font(.title2).bold()
             Text(strings.totalLine(

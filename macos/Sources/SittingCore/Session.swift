@@ -44,9 +44,10 @@ public enum Posture: String, Codable, Sendable, CaseIterable {
     case sitting
     case standing
 
+    /// Single-glyph fallback; rich UI uses the person+laptop composite instead.
     public var symbol: String {
         switch self {
-        case .sitting: return "chair"
+        case .sitting: return "laptopcomputer"
         case .standing: return "figure.stand"
         }
     }

@@ -48,7 +48,7 @@ public struct AppSettings: Codable, Sendable, Equatable {
         startPaused: Bool = false,
         reminderSound: Bool = true,
         launchAtLogin: Bool = false,
-        language: AppLanguage = .vietnamese,
+        language: AppLanguage = .english,
         subCalendar: SubCalendar = .vietnamese,
         fullScreenFlash: Bool = true,
         quoteOnFlash: Bool = true
@@ -96,7 +96,7 @@ public struct AppSettings: Codable, Sendable, Equatable {
         startPaused = try c.decodeIfPresent(Bool.self, forKey: .startPaused) ?? false
         reminderSound = try c.decodeIfPresent(Bool.self, forKey: .reminderSound) ?? true
         launchAtLogin = try c.decodeIfPresent(Bool.self, forKey: .launchAtLogin) ?? false
-        language = try c.decodeIfPresent(AppLanguage.self, forKey: .language) ?? .vietnamese
+        language = try c.decodeIfPresent(AppLanguage.self, forKey: .language) ?? .english
         subCalendar = try c.decodeIfPresent(SubCalendar.self, forKey: .subCalendar) ?? .vietnamese
         fullScreenFlash = try c.decodeIfPresent(Bool.self, forKey: .fullScreenFlash) ?? true
         quoteOnFlash = try c.decodeIfPresent(Bool.self, forKey: .quoteOnFlash) ?? true

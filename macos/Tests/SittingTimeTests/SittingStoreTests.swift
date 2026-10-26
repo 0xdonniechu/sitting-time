@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import Testing
 @testable import SittingCore
@@ -81,6 +82,18 @@ func minuteSettings(mode: SessionMode = .standUp) -> AppSettings {
     return settings
 }
 
+/// Installs the checked-in Vietnamese pack so `.vietnamese` lookups resolve.
+/// Idempotent (same content every call), so parallel tests can all call it.
+func installVietnamesePackForTests() {
+    let here = URL(fileURLWithPath: #filePath)
+    let packURL = here
+        .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        .appendingPathComponent("Resources/LanguagePacks/vi.json")
+    let data = try! Data(contentsOf: packURL)
+    let pack = try! JSONDecoder().decode(LanguagePack.self, from: data)
+    LanguagePacks.setOverrideForTesting(pack)
+}
+
 // MARK: - Store behaviour
 
 @Suite struct SittingStoreTests {
@@ -92,8 +105,8 @@ func minuteSettings(mode: SessionMode = .standUp) -> AppSettings {
         #expect(store.paused == false)
         #expect(store.sessionRemaining == 45 * 60)
         #expect(store.menuCountdown == "45:00")
-        #expect(store.statusTitle == "Làm việc")
-        #expect(store.statusSymbol == "chair")
+        #expect(store.statusTitle == "Work")
+        #expect(store.statusSymbol == "laptopcomputer")
     }
 
     @Test @MainActor func startsPausedWhenConfigured() {
@@ -103,7 +116,7 @@ func minuteSettings(mode: SessionMode = .standUp) -> AppSettings {
         #expect(store.paused == true)
         #expect(store.autoPaused == false)
         #expect(store.sessionRemaining == 45 * 60)
-        #expect(store.statusTitle == "Tạm nghỉ")
+        #expect(store.statusTitle == "Paused")
     }
 
     @Test @MainActor func countdownDecreasesAndFormats() {
@@ -136,8 +149,8 @@ func minuteSettings(mode: SessionMode = .standUp) -> AppSettings {
         #expect(store.sessionRemaining == 60)
         #expect(spy.reminderCount == 1)
         #expect(store.liveToday().breakCount == 1)
-        #expect(spy.posts.first?.title.contains("đứng dậy") == true)
-        #expect(spy.posts.first?.body.contains("Hôm nay:") == true)
+        #expect(spy.posts.first?.title.contains("stand up and move") == true)
+        #expect(spy.posts.first?.body.contains("Today:") == true)
         // Banner posted silent: the flash owns the sound.
         #expect(spy.posts.first?.sound == false)
         #expect(flashed.count == 1)
@@ -151,7 +164,7 @@ func minuteSettings(mode: SessionMode = .standUp) -> AppSettings {
         #expect(store.session == .work)
         #expect(spy.reminderCount == 2)
         #expect(store.liveToday().breakCount == 1)
-        #expect(spy.posts.last?.title == "Hết giờ nghỉ — vào phiên mới!")
+        #expect(spy.posts.last?.title == "Break over — back to work!")
     }
 
     @Test @MainActor func standUpCycleRepeats() {
@@ -178,14 +191,14 @@ func minuteSettings(mode: SessionMode = .standUp) -> AppSettings {
         }
         #expect(store.liveToday().breakCount == 4)
         #expect(spy.reminderCount == 8)
-        #expect(store.statusTitle == "Tập trung 1/4")
+        #expect(store.statusTitle == "Focus 1/4")
     }
 
     @Test @MainActor func pomodoroWorkTitleCountsFocus() {
         var settings = AppSettings()
         settings.sessionMode = .pomodoro
         let (store, _, _, _) = makeStore(settings: settings)
-        #expect(store.statusTitle == "Tập trung 1/4")
+        #expect(store.statusTitle == "Focus 1/4")
     }
 
     @Test @MainActor func skipAdvancesSilently() {
@@ -267,7 +280,7 @@ func minuteSettings(mode: SessionMode = .standUp) -> AppSettings {
         // Other durations leave the running session alone.
         store.settings.standUpBreakMinutes = 10
         #expect(store.sessionRemaining == 50 * 60 - 10)
-        store.settings.language = .english
+        store.settings.language = .vietnamese
         #expect(store.sessionRemaining == 50 * 60 - 10)
     }
 
@@ -358,7 +371,7 @@ func minuteSettings(mode: SessionMode = .standUp) -> AppSettings {
         #expect(store.continuousSit > 1100)
         let week = store.weekData()
         #expect(week.count == 7)
-        #expect(week.last?.label == "Hôm nay")
+        #expect(week.last?.label == "Today")
         let yesterday = week[week.count - 2]
         #expect(isNear(yesterday.sittingSeconds, 600, tolerance: 5))
         #expect(isNear(store.liveToday().sittingSeconds, 600, tolerance: 5))
@@ -381,10 +394,10 @@ func minuteSettings(mode: SessionMode = .standUp) -> AppSettings {
         store.setPosture(.standing)
         // Standing accrues during work sessions only: 45 + 5 + 20.
         run(store, clock, seconds: 70 * 60)
-        let goals = spy.posts.filter { $0.title.contains("mục tiêu") }
+        let goals = spy.posts.filter { $0.title.contains("standing goal") }
         #expect(goals.count == 1)
         run(store, clock, seconds: 10 * 60)
-        #expect(spy.posts.filter { $0.title.contains("mục tiêu") }.count == 1)
+        #expect(spy.posts.filter { $0.title.contains("standing goal") }.count == 1)
     }
 
     @Test @MainActor func resetTodayClearsAndKeepsSession() {
@@ -491,6 +504,7 @@ func minuteSettings(mode: SessionMode = .standUp) -> AppSettings {
     }
 
     @Test func sessionTitlesInBothLanguages() {
+        installVietnamesePackForTests()
         #expect(SessionKind.work.title(mode: .standUp, focusIndex: 1, language: .vietnamese) == "Làm việc")
         #expect(SessionKind.shortBreak.title(mode: .standUp, focusIndex: 1, language: .vietnamese) == "Vận động")
         #expect(SessionKind.work.title(mode: .pomodoro, focusIndex: 2, language: .vietnamese) == "Tập trung 2/4")
@@ -508,13 +522,15 @@ func minuteSettings(mode: SessionMode = .standUp) -> AppSettings {
     }
 
     @Test func durationFormatsInVietnamese() {
-        #expect(formatDuration(3600) == "1 giờ")
-        #expect(formatDuration(5400) == "1 giờ 30 phút")
-        #expect(formatDuration(300) == "5 phút")
-        #expect(formatDuration(30) == "30 giây")
+        installVietnamesePackForTests()
+        #expect(formatDuration(3600, language: .vietnamese) == "1 giờ")
+        #expect(formatDuration(5400, language: .vietnamese) == "1 giờ 30 phút")
+        #expect(formatDuration(300, language: .vietnamese) == "5 phút")
+        #expect(formatDuration(30, language: .vietnamese) == "30 giây")
     }
 
     @Test func sitPhaseHasVietnameseTitles() {
+        installVietnamesePackForTests()
         #expect(SitPhase.sitting.shortTitle(in: .vietnamese) == "Ngồi")
         #expect(SitPhase.standing.shortTitle(in: .vietnamese) == "Đứng")
         #expect(SitPhase.paused.shortTitle(in: .vietnamese) == "Nghỉ")
@@ -537,14 +553,28 @@ func minuteSettings(mode: SessionMode = .standUp) -> AppSettings {
         #expect(Strings(.english).breaksLine(count: 1, longest: "5 minutes") == "1 stand-up • Longest sit 5 minutes")
     }
 
+    @Test func solarLabelsForPopoverTile() {
+        // 2026-02-17 is a Tuesday in ISO week 8; 2026-10-26 a Monday starting
+        // ISO week 44 (2026-01-01 is a Thursday, so W1 starts Dec 29 2025).
+        let feb = solarLabels(for: solarDate(2026, 2, 17))
+        #expect(feb.week == "W8")
+        #expect(feb.month == "FEB")
+        #expect(feb.day == "17")
+        let oct = solarLabels(for: solarDate(2026, 10, 26))
+        #expect(oct.week == "W44")
+        #expect(oct.month == "OCT")
+        #expect(oct.day == "26")
+    }
+
     @Test func weekdayLabelsInBothLanguages() {
         // 2026-10-25 is a Sunday; 2026-10-26 a Monday (public calendar facts).
+        installVietnamesePackForTests()
         let sunday = solarDate(2026, 10, 25)
         let monday = solarDate(2026, 10, 26)
-        #expect(weekdayLabel(for: sunday) == "CN")
-        #expect(weekdayLabel(for: monday) == "T2")
-        #expect(weekdayLabel(for: sunday, language: .english) == "Sun")
-        #expect(weekdayLabel(for: monday, language: .english) == "Mon")
+        #expect(weekdayLabel(for: sunday, language: .vietnamese) == "CN")
+        #expect(weekdayLabel(for: monday, language: .vietnamese) == "T2")
+        #expect(weekdayLabel(for: sunday) == "Sun")
+        #expect(weekdayLabel(for: monday) == "Mon")
     }
 
     @Test func oldSettingsWithoutNewKeysLoadWithDefaults() {
@@ -556,7 +586,7 @@ func minuteSettings(mode: SessionMode = .standUp) -> AppSettings {
         #expect(decoded?.standUpWorkMinutes == 45)
         #expect(decoded?.standUpBreakMinutes == 5)
         #expect(decoded?.pomodoroWorkMinutes == 25)
-        #expect(decoded?.language == .vietnamese)
+        #expect(decoded?.language == .english)
         #expect(decoded?.subCalendar == .vietnamese)
         #expect(decoded?.fullScreenFlash == true)
         #expect(decoded?.quoteOnFlash == true)
@@ -582,7 +612,10 @@ func minuteSettings(mode: SessionMode = .standUp) -> AppSettings {
     }
 
     @Test @MainActor func flashHookFiresWithRandomQuote() {
-        let (store, clock, _, spy) = makeStore(settings: minuteSettings())
+        installVietnamesePackForTests()
+        var viSettings = minuteSettings()
+        viSettings.language = .vietnamese
+        let (store, clock, _, spy) = makeStore(settings: viSettings)
         var flashed: [(String, String, HealthQuote?)] = []
         store.onFlash = { flashed.append(($0, $1, $2)) }
         run(store, clock, seconds: 65)
@@ -637,6 +670,7 @@ func solarDate(_ year: Int, _ month: Int, _ day: Int) -> Date {
     }
 
     @Test func tetIsLunarNewYear() {
+        installVietnamesePackForTests()
         // Tết Bính Ngọ: 2026-02-17 is lunar 1/1 (public holiday fact).
         let date = solarDate(2026, 2, 17)
         for type in [SubCalendar.vietnamese, SubCalendar.chinese] {
@@ -645,17 +679,24 @@ func solarDate(_ year: Int, _ month: Int, _ day: Int) -> Date {
             #expect(lunar?.sub == "1")
             #expect(lunar?.isLeapMonth == false)
             #expect(lunar?.accessibleLabel.contains("Bính Ngọ") == true)
+            #expect(lunar?.yearLabel == "Bính Ngọ")
+            #expect(lunar?.yearElement == .fire)
+            #expect(lunar?.yearAnimal == .horse)
         }
         let en = subCalendarDate(for: date, calendar: .vietnamese, language: .english)
         #expect(en?.accessibleLabel.contains("Binh Ngo") == true)
+        #expect(en?.yearLabel == "Binh Ngo")
     }
 
     @Test func leapMonthIsFlagged() {
+        installVietnamesePackForTests()
         // 2025 has a leap 6th lunar month (Jul 25 – Aug 22); Aug 1 is inside it.
         let lunar = subCalendarDate(for: solarDate(2025, 8, 1), calendar: .vietnamese, language: .vietnamese)
         #expect(lunar?.isLeapMonth == true)
         #expect(lunar?.sub == "6N")
         #expect(lunar?.accessibleLabel.contains("nhuận") == true)
+        #expect(lunar?.yearLabel == "Ất Tỵ")
+        #expect(lunar?.yearElement == .wood)
     }
 
     @Test func hebrewHolidays() {
@@ -663,6 +704,8 @@ func solarDate(_ year: Int, _ month: Int, _ day: Int) -> Date {
         let kippur = subCalendarDate(for: solarDate(2026, 9, 21), calendar: .hebrew, language: .vietnamese)
         #expect(kippur?.day == "10")
         #expect(kippur?.sub == "Tishri")
+        #expect(kippur?.yearLabel == "5787")
+        #expect(kippur?.yearElement == nil)
         // Purim Katan 2024-02-23 is 14 Adar I 5784 (leap year, public fact).
         let adar1 = subCalendarDate(for: solarDate(2024, 2, 23), calendar: .hebrew, language: .english)
         #expect(adar1?.day == "14")
@@ -683,6 +726,8 @@ func solarDate(_ year: Int, _ month: Int, _ day: Int) -> Date {
         let date = subCalendarDate(for: solarDate(2026, 3, 1), calendar: .islamic, language: .english)
         #expect(date?.sub == "Ramadan")
         #expect(date?.accessibleLabel.contains("1447") == true)
+        #expect(date?.yearLabel == "1447")
+        #expect(date?.yearElement == nil)
     }
 
     @Test func buddhistYear() {
@@ -690,6 +735,54 @@ func solarDate(_ year: Int, _ month: Int, _ day: Int) -> Date {
         #expect(date?.day == "17")
         #expect(date?.sub == "2")
         #expect(date?.accessibleLabel.contains("2569") == true)
+        #expect(date?.yearLabel == "2569")
+        #expect(date?.yearElement == nil)
+    }
+
+    @Test func zodiacAnimalsResolve() {
+        // Quý Mão 2023: both calendars use the rabbit (public CNY fact).
+        let maoVI = subCalendarDate(for: solarDate(2023, 3, 15), calendar: .vietnamese, language: .vietnamese)
+        let maoZH = subCalendarDate(for: solarDate(2023, 3, 15), calendar: .chinese, language: .vietnamese)
+        #expect(maoVI?.yearAnimal == .rabbit)
+        #expect(maoZH?.yearAnimal == .rabbit)
+        // Tân Sửu 2021: one bovine art serves both calendars.
+        let suuVI = subCalendarDate(for: solarDate(2021, 3, 15), calendar: .vietnamese, language: .vietnamese)
+        let suuZH = subCalendarDate(for: solarDate(2021, 3, 15), calendar: .chinese, language: .vietnamese)
+        #expect(suuVI?.yearAnimal == .ox)
+        #expect(suuZH?.yearAnimal == .ox)
+        // Numbered years carry no animal.
+        let hebrew = subCalendarDate(for: solarDate(2026, 9, 21), calendar: .hebrew, language: .english)
+        #expect(hebrew?.yearAnimal == nil)
+    }
+
+    @Test func zodiacArtworkShipsForKnownAnimals() {
+        // Every animal must have a decodable PNG.
+        let here = URL(fileURLWithPath: #filePath)
+        let dir = here
+            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("Resources/Zodiac")
+        for animal in ZodiacAnimal.allCases {
+            let url = dir.appendingPathComponent("\(animal.assetName).png")
+            #expect(FileManager.default.fileExists(atPath: url.path), "missing \(animal.assetName).png")
+            #expect(NSImage(contentsOf: url) != nil, "undecodable \(animal.assetName).png")
+        }
+    }
+
+    @Test func yearElementsCoverAllFive() {
+        installVietnamesePackForTests()
+        // Mid-March dates sit safely inside their lunar years (public CNY facts).
+        let cases: [(Date, String, YearElement)] = [
+            (solarDate(2024, 3, 15), "Giáp Thìn", .wood),
+            (solarDate(2026, 3, 15), "Bính Ngọ", .fire),
+            (solarDate(2019, 3, 15), "Kỷ Hợi", .earth),
+            (solarDate(2020, 3, 15), "Canh Tý", .metal),
+            (solarDate(2022, 3, 15), "Nhâm Dần", .water),
+        ]
+        for (date, name, element) in cases {
+            let lunar = subCalendarDate(for: date, calendar: .vietnamese, language: .vietnamese)
+            #expect(lunar?.yearLabel == name)
+            #expect(lunar?.yearElement == element)
+        }
     }
 }
 
@@ -701,13 +794,15 @@ func solarDate(_ year: Int, _ month: Int, _ day: Int) -> Date {
     }
 
     @Test func quotesFilledShortAndUnique() {
+        installVietnamesePackForTests()
         var seenVI = Set<String>()
         var seenEN = Set<String>()
         for quote in healthQuotes {
-            #expect(!quote.emoji.isEmpty && !quote.vi.isEmpty && !quote.en.isEmpty)
-            #expect(quote.vi.count <= 160)
+            let vi = quote.text(in: .vietnamese)
+            #expect(!quote.emoji.isEmpty && !vi.isEmpty && !quote.en.isEmpty)
+            #expect(vi.count <= 160)
             #expect(quote.en.count <= 160)
-            seenVI.insert(quote.vi)
+            seenVI.insert(vi)
             seenEN.insert(quote.en)
         }
         #expect(seenVI.count == healthQuotes.count)
@@ -720,5 +815,178 @@ func solarDate(_ year: Int, _ month: Int, _ day: Int) -> Date {
         let picked = (0..<200).compactMap { _ in healthQuotes.randomElement() }
         #expect(picked.count == 200)
         #expect(Set(picked).count > 1)
+    }
+}
+
+// MARK: - Language packs
+
+@Suite struct LanguagePackTests {
+    /// Every non-quote key the code looks up. Update alongside Strings: a key
+    /// added in code without a pack entry silently renders English.
+    static let requiredKeys = [
+        "autoPausedNote",
+        "backButton",
+        "autoSection",
+        "breakOverTitle",
+        "breaksLine.other",
+        "buddhist.suffix",
+        "calendarLabel",
+        "calendarName.buddhist",
+        "calendarName.chinese",
+        "calendarName.hebrew",
+        "calendarName.islamic",
+        "calendarName.off",
+        "calendarName.vietnamese",
+        "chartDay",
+        "chartHour",
+        "chartSitting",
+        "chartStanding",
+        "clearAllButton",
+        "clearAllDialog",
+        "dataSection",
+        "daySitting",
+        "dayStanding",
+        "deleteAllButton",
+        "deleteButton",
+        "dismissHint",
+        "displaySection",
+        "downloadFailed",
+        "flashToggle",
+        "footerNote",
+        "goalBody",
+        "goalOff",
+        "goalOn",
+        "goalProgress",
+        "goalSection",
+        "goalTitle",
+        "idleTitle.other",
+        "keepButton",
+        "langDownload",
+        "langDownloaded",
+        "langDownloading",
+        "langNotDownloaded",
+        "languageLabel",
+        "loginError",
+        "loginToggle",
+        "longMinutes",
+        "lunar.label",
+        "lunar.leapSuffix",
+        "lunar.leapWord",
+        "modeLabel",
+        "moveMinutes",
+        "notifySection",
+        "openSystemButton",
+        "pauseButton",
+        "permissionOff",
+        "permissionOn",
+        "permissionRow",
+        "phaseShort.paused",
+        "phaseShort.sitting",
+        "phaseShort.standing",
+        "phaseTitle.paused",
+        "phaseTitle.sitting",
+        "phaseTitle.standing",
+        "quitButton",
+        "quoteToggle",
+        "reminderBody",
+        "requestButton",
+        "resetTodayButton",
+        "resetTodayDialog",
+        "resumeButton",
+        "resumeToggle",
+        "revealButton",
+        "sessionSection",
+        "sessionTitle.focus",
+        "sessionTitle.longBreak",
+        "sessionTitle.move",
+        "sessionTitle.shortBreak",
+        "sessionTitle.work",
+        "settingsButton",
+        "settingsPanelTitle",
+        "shortMinutes",
+        "skipButton",
+        "soundToggle",
+        "startPausedToggle",
+        "statsButton",
+        "statsPanelTitle",
+        "statusPickerLabel",
+        "supportSection",
+        "systemSection",
+        "todayLabel",
+        "todaySection",
+        "totalLine",
+        "unit.hour",
+        "unit.minute",
+        "unit.second",
+        "weekTitle",
+        "workEndTitle",
+        "workMinutes",
+        "yAxisHours",
+    ]
+
+    static func checkedInPack() -> LanguagePack {
+        let here = URL(fileURLWithPath: #filePath)
+        let packURL = here
+            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("Resources/LanguagePacks/vi.json")
+        let data = try! Data(contentsOf: packURL)
+        return try! JSONDecoder().decode(LanguagePack.self, from: data)
+    }
+
+    @Test func packFileIsValidAndComplete() {
+        let pack = Self.checkedInPack()
+        #expect(pack.version >= 1)
+        let keys = Set(pack.strings.keys)
+        for key in Self.requiredKeys {
+            #expect(keys.contains(key), "pack missing \(key)")
+        }
+        // One Vietnamese text per quote, in order; no extras, no gaps.
+        #expect(pack.strings.keys.filter { $0.hasPrefix("quote.") }.count == healthQuotes.count)
+        for i in 0..<healthQuotes.count {
+            #expect(pack.strings["quote.\(i)"] != nil, "pack missing quote.\(i)")
+        }
+        #expect(pack.strings.count == Self.requiredKeys.count + healthQuotes.count)
+    }
+
+    @Test func vietnameseStringsResolveThroughPack() {
+        installVietnamesePackForTests()
+        let strings = Strings(.vietnamese)
+        #expect(strings.language == .vietnamese)
+        #expect(strings.pauseButton == "Tạm nghỉ")
+        #expect(strings.settingsButton == "Cài đặt")
+        #expect(strings.goalProgress("1 giờ") == "Mục tiêu đứng 1 giờ")
+        #expect(strings.breaksLine(count: 1, longest: "5 phút") == "Đứng dậy 1 lần • Ngồi lâu nhất 5 phút")
+        #expect(strings.breaksLine(count: 3, longest: "5 phút") == "Đứng dậy 3 lần • Ngồi lâu nhất 5 phút")
+        #expect(strings.idleTitle(minutes: 1) == "Tự tạm nghỉ sau 1 phút không dùng máy")
+        #expect(strings.footerNote(version: "1.0") == "SittingTime 1.0 • Dữ liệu chỉ nằm trên máy này, không tài khoản, không theo dõi.")
+        #expect(strings.calendarName(.vietnamese) == "Âm lịch (Việt)")
+        #expect(strings.sessionTitle(kind: .work, mode: .pomodoro, focusIndex: 2) == "Tập trung 2/4")
+        #expect(formatDuration(300, language: .vietnamese) == "5 phút")
+        #expect(healthQuotes[0].text(in: .vietnamese) == Self.checkedInPack().strings["quote.0"])
+    }
+
+    @Test func missingPackFallsBackToEnglish() {
+        // Pure overloads: no global state, safe under parallel tests.
+        #expect(LanguagePacks.resolve(.vietnamese, packInstalled: false) == .english)
+        #expect(LanguagePacks.resolve(.vietnamese, packInstalled: true) == .vietnamese)
+        #expect(LanguagePacks.resolve(.english, packInstalled: false) == .english)
+        #expect(LanguagePacks.string("pauseButton", english: "Pause", language: .vietnamese, pack: nil) == "Pause")
+        let thin = LanguagePack(version: 1, strings: ["pauseButton": "Tạm nghỉ"])
+        #expect(LanguagePacks.string("pauseButton", english: "Pause", language: .vietnamese, pack: thin) == "Tạm nghỉ")
+        #expect(LanguagePacks.string("skipButton", english: "Skip", language: .vietnamese, pack: thin) == "Skip")
+        #expect(LanguagePacks.string("pauseButton", english: "Pause", language: .english, pack: thin) == "Pause")
+    }
+
+    @Test func formatFillsPlaceholders() {
+        #expect(LanguagePacks.format("A {x} B {y}", ["x": "1"]) == "A 1 B {y}")
+        #expect(LanguagePacks.format("No placeholders", [:]) == "No placeholders")
+    }
+
+    @Test func englishIsTheDefault() {
+        installVietnamesePackForTests()
+        #expect(AppSettings().language == .english)
+        #expect(Strings(.english).pauseButton == "Pause")
+        // Resolved English stays English even with the pack installed.
+        #expect(Strings(.english).language == .english)
     }
 }

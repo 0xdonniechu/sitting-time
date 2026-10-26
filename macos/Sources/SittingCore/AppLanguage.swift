@@ -1,6 +1,7 @@
 import Foundation
 
-/// UI language. Vietnamese first: this is a personal app, English on request.
+/// UI language. English ships in the binary and is the default; Vietnamese
+/// downloads on demand from Settings (see `LanguagePacks`).
 public enum AppLanguage: String, Codable, Sendable, CaseIterable {
     case vietnamese = "vi"
     case english = "en"

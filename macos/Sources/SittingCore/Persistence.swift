@@ -18,6 +18,7 @@ public enum Persistence {
     public static let folderName = "SittingTime"
     public static let dataFileName = "records.json"
     public static let settingsFileName = "settings.json"
+    public static let languagePackFileName = "lang-vi.json"
     public static let currentVersion = 1
 
     public static func folderURL() -> URL? {
@@ -75,5 +76,34 @@ public enum Persistence {
         } catch {
             fputs("SittingTime: cannot save settings (\(error))\n", stderr)
         }
+    }
+
+    /// Raw bytes of the downloaded Vietnamese pack, if present. Corrupt
+    /// files are treated as missing (the caller falls back to English).
+    public static func loadLanguagePack() -> Data? {
+        guard let url = folderURL()?.appendingPathComponent(languagePackFileName),
+              FileManager.default.fileExists(atPath: url.path)
+        else { return nil }
+        return try? Data(contentsOf: url)
+    }
+
+    public static func saveLanguagePack(_ data: Data) throws {
+        guard let folder = folderURL() else {
+            throw LanguagePackError.invalidPack
+        }
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try data.write(to: folder.appendingPathComponent(languagePackFileName), options: .atomic)
+    }
+
+    public static func deleteLanguagePack() {
+        guard let url = folderURL()?.appendingPathComponent(languagePackFileName) else { return }
+        try? FileManager.default.removeItem(at: url)
+    }
+
+    public static func languagePackBytes() -> Int? {
+        guard let url = folderURL()?.appendingPathComponent(languagePackFileName),
+              let size = try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int
+        else { return nil }
+        return size
     }
 }

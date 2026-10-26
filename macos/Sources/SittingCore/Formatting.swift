@@ -14,22 +14,25 @@ public func formatElapsed(_ seconds: TimeInterval) -> String {
 
 /// `"2 giờ 15 phút"`, `"45 phút"`, `"30 giây"` (or the English equivalents
 /// with proper plurals). Used for totals and stats.
-public func formatDuration(_ seconds: TimeInterval, language: AppLanguage = .vietnamese) -> String {
+public func formatDuration(_ seconds: TimeInterval, language: AppLanguage = .english) -> String {
     let total = max(0, Int(seconds.rounded()))
     let hours = total / 3600
     let minutes = (total % 3600) / 60
-    switch language {
+    switch LanguagePacks.resolve(language) {
     case .vietnamese:
+        let hour = LanguagePacks.string("unit.hour", english: "hour", for: .vietnamese)
+        let minute = LanguagePacks.string("unit.minute", english: "minute", for: .vietnamese)
+        let second = LanguagePacks.string("unit.second", english: "second", for: .vietnamese)
         if hours > 0, minutes > 0 {
-            return "\(hours) giờ \(minutes) phút"
+            return "\(hours) \(hour) \(minutes) \(minute)"
         }
         if hours > 0 {
-            return "\(hours) giờ"
+            return "\(hours) \(hour)"
         }
         if minutes > 0 {
-            return "\(minutes) phút"
+            return "\(minutes) \(minute)"
         }
-        return "\(total) giây"
+        return "\(total) \(second)"
     case .english:
         func unit(_ value: Int, _ singular: String) -> String {
             value == 1 ? "1 \(singular)" : "\(value) \(singular)s"
@@ -48,7 +51,7 @@ public func formatDuration(_ seconds: TimeInterval, language: AppLanguage = .vie
 }
 
 /// Compact form for notifications; same units as `formatDuration`.
-public func formatShortDuration(_ seconds: TimeInterval, language: AppLanguage = .vietnamese) -> String {
+public func formatShortDuration(_ seconds: TimeInterval, language: AppLanguage = .english) -> String {
     formatDuration(seconds, language: language)
 }
 
@@ -59,8 +62,8 @@ public func dateKey(for date: Date, calendar: Calendar = .current) -> String {
 }
 
 /// Short weekday label: `"T2"` … `"CN"` in Vietnamese, `"Sun"` … in English.
-public func weekdayLabel(for date: Date, calendar: Calendar = .current, language: AppLanguage = .vietnamese) -> String {
-    switch language {
+public func weekdayLabel(for date: Date, calendar: Calendar = .current, language: AppLanguage = .english) -> String {
+    switch LanguagePacks.resolve(language) {
     case .vietnamese:
         var cal = calendar
         cal.locale = Locale(identifier: "vi_VN")

@@ -169,12 +169,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             )
             panel.level = .floating
             panel.hidesOnDeactivate = false
-            panel.contentViewController = NSHostingController(rootView: StatsView().environment(store))
+            // Same collapse guard as the settings panel (see showSettings).
+            let hosting = NSHostingController(rootView: StatsView(onReturnToDash: { [weak self] in
+                self?.statsPanel?.close()
+                self?.showPopover()
+            }).environment(store))
+            hosting.sizingOptions = []
+            panel.contentViewController = hosting
             panel.isReleasedWhenClosed = false
             panel.center()
             statsPanel = panel
         }
         statsPanel?.title = Strings(store.settings.language).statsPanelTitle
+        statsPanel?.setContentSize(NSSize(width: 520, height: 640))
         statsPanel?.makeKeyAndOrderFront(nil)
         NSApp.activate()
     }
@@ -185,18 +192,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // inactive, so the button goes through this closure instead.
         if settingsPanel == nil {
             let panel = NSPanel(
-                contentRect: NSRect(x: 0, y: 0, width: 480, height: 640),
+                contentRect: NSRect(x: 0, y: 0, width: 480, height: 700),
                 styleMask: [.titled, .closable, .resizable],
                 backing: .buffered, defer: false
             )
             panel.level = .floating
             panel.hidesOnDeactivate = false
-            panel.contentViewController = NSHostingController(rootView: SettingsView().environment(store))
+            // sizingOptions off: the hosting controller must never resize the
+            // panel itself (seen: collapsed to a bare title bar).
+            let hosting = NSHostingController(rootView: SettingsView(onReturnToDash: { [weak self] in
+                self?.settingsPanel?.close()
+                self?.showPopover()
+            }).environment(store))
+            hosting.sizingOptions = []
+            panel.contentViewController = hosting
             panel.isReleasedWhenClosed = false
             panel.center()
             settingsPanel = panel
         }
         settingsPanel?.title = Strings(store.settings.language).settingsPanelTitle
+        // Re-asserted on every open like the popover's contentSize: creating
+        // the size once is not enough, the window can still come back shrunk.
+        settingsPanel?.setContentSize(NSSize(width: 480, height: 700))
         settingsPanel?.makeKeyAndOrderFront(nil)
         NSApp.activate()
     }
@@ -204,9 +221,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func refreshStatusItem() {
         guard let button = statusItem?.button else { return }
         button.title = store.menuCountdown
-        let image = NSImage(systemSymbolName: store.statusSymbol, accessibilityDescription: store.statusTitle)
-        image?.isTemplate = true
-        button.image = image
+        let size = button.font?.pointSize ?? NSFont.systemFontSize
+        if !store.paused, store.session.isWork {
+            button.image = statusItemImage(
+                deskCompositeImage(pointSize: size, deskRaised: store.posture == .standing),
+                pointSize: size
+            )
+        } else {
+            let image = NSImage(systemSymbolName: store.statusSymbol, accessibilityDescription: store.statusTitle)
+            image?.isTemplate = true
+            button.image = statusItemImage(image, pointSize: size)
+        }
         button.imagePosition = .imageLeading
     }
 }

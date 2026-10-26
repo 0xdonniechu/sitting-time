@@ -10,12 +10,27 @@ struct SettingsView: View {
     @State private var notificationsOn: Bool?
     @State private var confirmResetToday = false
     @State private var confirmClearAll = false
+    @State private var packDownloading = false
+    @State private var packError: String?
+
+    /// Closes the window and reopens the popover dash. Nil hides the button
+    /// (the standalone Settings scene has nowhere to return to).
+    var onReturnToDash: (() -> Void)?
 
     var body: some View {
         @Bindable var store = store
         let lang = store.settings.language
+        // Checkmarks follow the effective language: a legacy `.vietnamese`
+        // setting without the pack shows English as active, not both.
+        let effectiveLang = LanguagePacks.resolve(lang)
         let strings = Strings(lang)
         Form {
+            if let onReturnToDash {
+                Button(action: onReturnToDash) {
+                    Label(strings.backButton, systemImage: "chevron.left")
+                }
+                .buttonStyle(.link)
+            }
             Section(strings.sessionSection) {
                 Picker(strings.modeLabel, selection: Binding(
                     get: { store.settings.sessionMode },
@@ -87,10 +102,28 @@ struct SettingsView: View {
             }
 
             Section(strings.displaySection) {
-                Picker(strings.languageLabel, selection: $store.settings.language) {
-                    ForEach(AppLanguage.allCases, id: \.self) { option in
-                        Text(option.displayName).tag(option)
+                Picker(strings.languageLabel, selection: Binding(
+                    get: { effectiveLang },
+                    set: { selectLanguage($0) }
+                )) {
+                    Text(AppLanguage.english.displayName).tag(AppLanguage.english)
+                    Text(AppLanguage.vietnamese.displayName).tag(AppLanguage.vietnamese)
+                }
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(AppLanguage.vietnamese.displayName)
+                        Text(packNote(strings: strings))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
+                    Spacer()
+                    packTrailing(strings: strings)
+                }
+                .disabled(packDownloading)
+                if let packError {
+                    Text(packError)
+                        .font(.caption)
+                        .foregroundStyle(.red)
                 }
                 Picker(strings.calendarLabel, selection: $store.settings.subCalendar) {
                     ForEach(SubCalendar.allCases, id: \.self) { option in
@@ -117,6 +150,12 @@ struct SettingsView: View {
                 Button(strings.clearAllButton, role: .destructive) { confirmClearAll = true }
             }
 
+            Section(strings.supportSection) {
+                Link(destination: AppInfo.donateURL) {
+                    Label("Buy me a coffee", systemImage: "cup.and.saucer")
+                }
+            }
+
             Section {
                 Text(strings.footerNote(version: AppInfo.version))
                     .font(.caption)
@@ -124,7 +163,10 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 440)
+        // Minimum height feeds the intrinsic size: without it the hosting
+        // controller can report zero height and collapse the panel to a bare
+        // title bar (seen in production screenshots).
+        .frame(minWidth: 440, minHeight: 620)
         .confirmationDialog(
             strings.resetTodayDialog, isPresented: $confirmResetToday, titleVisibility: .visible
         ) {
@@ -140,6 +182,52 @@ struct SettingsView: View {
         .task {
             notificationsOn = await store.notificationAuthorized()
             store.settings.launchAtLogin = LoginItemManager.isEnabled
+            store.refreshLanguagePackStatus()
+        }
+    }
+
+    /// Dropdown selection: English switches at once; Vietnamese switches
+    /// when installed, otherwise downloads first (and switches on success).
+    private func selectLanguage(_ language: AppLanguage) {
+        if language == .english {
+            store.settings.language = .english
+        } else if store.vietnamesePackInstalled {
+            store.settings.language = .vietnamese
+        } else {
+            downloadPack()
+        }
+    }
+
+    private func packNote(strings: Strings) -> String {
+        if packDownloading { return strings.langDownloading }
+        if store.vietnamesePackInstalled {
+            return strings.langDownloaded(ByteCountFormatter.string(
+                fromByteCount: Int64(store.vietnamesePackBytes), countStyle: .file
+            ))
+        }
+        return strings.langNotDownloaded
+    }
+
+    private func packTrailing(strings: Strings) -> some View {
+        Group {
+            if packDownloading {
+                ProgressView()
+                    .controlSize(.small)
+            } else if store.vietnamesePackInstalled {
+                Button(strings.deleteButton) { store.deleteVietnamesePack() }
+            } else {
+                Button(strings.langDownload) { downloadPack() }
+            }
+        }
+    }
+
+    private func downloadPack() {
+        guard !packDownloading else { return }
+        packDownloading = true
+        packError = nil
+        Task {
+            packError = await store.downloadVietnamesePack()
+            packDownloading = false
         }
     }
 
