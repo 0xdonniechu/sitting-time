@@ -1,0 +1,43 @@
+# Builds the Windows installer (NSIS + MSI) on a tag push like
+# `windows-v1.1.8` and uploads the bundles to a DRAFT GitHub release.
+# The owner reviews the artifacts and publishes the release by hand:
+# merging this file alone builds nothing (tags-only trigger).
+name: Release Windows
+
+on:
+  push:
+    tags:
+      - "windows-v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # Pinned to the repo's Rust (see rust-toolchain.toml): newer
+      # toolchains trip Windows Smart App Control on some machines.
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.96.0
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: "SittingTime Windows ${{ github.ref_name }}"
+          releaseBody: "Windows installer (NSIS + MSI) for ${{ github.ref_name }}. See the release notes on the matching macOS release for what changed."
+          releaseDraft: true
+          prerelease: false
