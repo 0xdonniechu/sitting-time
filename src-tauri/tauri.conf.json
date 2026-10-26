@@ -16,7 +16,7 @@
         "create": false,
         "title": "SittingTime",
         "width": 410,
-        "height": 500,
+        "height": 640,
         "resizable": false,
         "fullscreen": false,
         "center": true,

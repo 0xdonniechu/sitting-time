@@ -1,5 +1,6 @@
 mod facts;
 mod lunar;
+mod notify;
 mod settings;
 mod stats;
 mod timer;
@@ -129,13 +130,8 @@ fn notify_session(app: &AppHandle, session: SessionKind) {
         .map(|settings| settings.clone())
         .unwrap_or_default();
 
-    let (title, body) = match session {
-        SessionKind::Focus => ("Break complete", "Ready for another focus session"),
-        SessionKind::ShortBreak => ("Focus session complete", "Take a short break"),
-        SessionKind::LongBreak => ("Focus cycle complete", "Take a long break"),
-        SessionKind::Sitting => ("Break complete", "You can return to work"),
-        SessionKind::Move => ("Time to stand up", "Move around for a few minutes"),
-    };
+    let vietnamese = settings.language == AppLanguage::Vietnamese;
+    let (title, body) = notify::session_alert(session, vietnamese);
 
     if settings.notifications_enabled {
         let _ = app.notification().builder().title(title).body(body).show();
@@ -299,36 +295,6 @@ fn get_app_info() -> AppInfo {
     }
 }
 
-/// `"1 hour"`, `"2 hours 5 minutes"` (or `"1 giờ"`, `"2 giờ 5 phút"`):
-/// compact goal size for the notification and the progress label.
-fn format_goal(minutes: u32, vietnamese: bool) -> String {
-    let hours = minutes / 60;
-    let rest = minutes % 60;
-    if vietnamese {
-        match (hours, rest) {
-            (0, _) => format!("{rest} phút"),
-            (_, 0) => format!("{hours} giờ"),
-            _ => format!("{hours} giờ {rest} phút"),
-        }
-    } else {
-        let hour_part = match hours {
-            0 => None,
-            1 => Some("1 hour".to_string()),
-            _ => Some(format!("{hours} hours")),
-        };
-        let minute_part = match rest {
-            0 => None,
-            1 => Some("1 minute".to_string()),
-            _ => Some(format!("{rest} minutes")),
-        };
-        match (hour_part, minute_part) {
-            (None, None) => "0 minutes".to_string(),
-            (Some(one), None) | (None, Some(one)) => one,
-            (Some(hours), Some(minutes)) => format!("{hours} {minutes}"),
-        }
-    }
-}
-
 /// Fires the standing-goal notification once per day when the goal is met.
 /// Silent when notifications are off or the goal is disabled (0).
 fn check_goal(app: &AppHandle) {
@@ -358,7 +324,7 @@ fn check_goal(app: &AppHandle) {
     }
     stats.mark_goal_notified(today.date_key.clone());
     drop(stats);
-    let goal = format_goal(goal_minutes, vietnamese);
+    let goal = notify::format_goal(goal_minutes, vietnamese);
     let (title, body) = if vietnamese {
         (
             "Đạt mục tiêu đứng hôm nay!",
@@ -557,19 +523,6 @@ pub fn run() {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
-    #[test]
-    fn goal_formatting_matches_both_languages() {
-        assert_eq!(format_goal(60, false), "1 hour");
-        assert_eq!(format_goal(90, false), "1 hour 30 minutes");
-        assert_eq!(format_goal(45, false), "45 minutes");
-        assert_eq!(format_goal(1, false), "1 minute");
-        assert_eq!(format_goal(60, true), "1 giờ");
-        assert_eq!(format_goal(90, true), "1 giờ 30 phút");
-        assert_eq!(format_goal(45, true), "45 phút");
-    }
-
     /// Any window Tauri creates on its own exists before setup() manages
     /// AppState, which brings back the startup abort.
     #[test]
