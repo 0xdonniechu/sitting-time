@@ -131,9 +131,17 @@ struct MenuBarView: View {
 
             Divider()
 
-            HStack(spacing: 4) {
-                Button(strings.statsButton) { openStats() }
-                Button(strings.settingsButton) { openSettings() }
+            // Icon footer: text links ran together into one blue blob.
+            // Tooltips keep the localized labels discoverable on hover.
+            HStack(spacing: 16) {
+                Button(action: openStats) {
+                    Image(systemName: "chart.bar")
+                }
+                .help(strings.statsButton)
+                Button(action: openSettings) {
+                    Image(systemName: "gearshape")
+                }
+                .help(strings.settingsButton)
                 Spacer(minLength: 0)
                 Link(destination: AppInfo.donateURL) {
                     HStack(spacing: 3) {
@@ -149,9 +157,14 @@ struct MenuBarView: View {
                 }
                 .help("Buy me a coffee")
                 Spacer(minLength: 0)
-                Button(strings.quitButton) { NSApplication.shared.terminate(nil) }
+                Button(action: { NSApplication.shared.terminate(nil) }) {
+                    Image(systemName: "power")
+                }
+                .help(strings.quitButton)
             }
-            .buttonStyle(.link)
+            .buttonStyle(.borderless)
+            .foregroundStyle(.secondary)
+            .font(.system(size: 14))
         }
         .padding(14)
         .frame(width: 300)

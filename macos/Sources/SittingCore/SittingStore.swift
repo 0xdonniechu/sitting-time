@@ -8,12 +8,19 @@ public struct WeekDay: Identifiable, Sendable {
     public var label: String
     public var sittingSeconds: TimeInterval
     public var standingSeconds: TimeInterval
+    public var pausedSeconds: TimeInterval
 
-    public init(dateKey: String, label: String, sittingSeconds: TimeInterval, standingSeconds: TimeInterval) {
+    public init(dateKey: String, label: String, sittingSeconds: TimeInterval, standingSeconds: TimeInterval, pausedSeconds: TimeInterval) {
         self.dateKey = dateKey
         self.label = label
         self.sittingSeconds = sittingSeconds
         self.standingSeconds = standingSeconds
+        self.pausedSeconds = pausedSeconds
+    }
+
+    /// Total tracked seconds (all phases).
+    public var trackedSeconds: TimeInterval {
+        sittingSeconds + standingSeconds + pausedSeconds
     }
 }
 
@@ -227,6 +234,7 @@ public final class SittingStore {
     public func liveToday() -> DayRecord {
         var record = todayRecord
         record.addSegment(phase: attributionPhase, seconds: openSegmentSeconds)
+        creditHourly(to: &record, phase: attributionPhase, from: segmentStartedAt, upTo: now())
         // longestSit must also reflect a still-running stretch.
         if posture == .sitting, !paused {
             record.longestSitSeconds = max(record.longestSitSeconds, continuousSit)
@@ -254,7 +262,8 @@ public final class SittingStore {
                     ? Strings(settings.language).todayLabel
                     : weekdayLabel(for: date, language: settings.language),
                 sittingSeconds: record.sittingSeconds,
-                standingSeconds: record.standingSeconds
+                standingSeconds: record.standingSeconds,
+                pausedSeconds: record.pausedSeconds
             )
         }
     }
@@ -385,6 +394,9 @@ public final class SittingStore {
         guard paused else { return }
         let at = now()
         rolloverIfNeeded(at: at)
+        // Bank the paused stretch as rest first: without this the seconds
+        // since the last checkpoint silently vanish from history.
+        closeSegment(upTo: at)
         paused = false
         autoPaused = false
         sessionStartedAt = at
@@ -492,11 +504,20 @@ public final class SittingStore {
         // time. Credit presence up to the last tick, then auto-pause now; the
         // gap itself is discarded.
         if at.timeIntervalSince(lastTick) > Self.sleepGapThreshold {
-            rolloverIfNeeded(at: at)
             if !paused {
                 bankElapsed(upTo: lastTick)
             }
+            // Credit presence up to the last tick, into the old day.
             closeSegment(upTo: lastTick)
+            saveData()
+            // Flip the day WITHOUT rolloverIfNeeded: it would credit
+            // [lastTick, midnight) as presence — phantom hours every
+            // overnight sleep. The whole gap is unknown and discarded.
+            let key = dateKey(for: at)
+            if key != todayKey {
+                todayKey = key
+                standGoalNotified = false
+            }
             paused = true
             autoPaused = true
             segmentStartedAt = at
@@ -579,7 +600,27 @@ public final class SittingStore {
             record.longestSitSeconds = max(record.longestSitSeconds, upTo.timeIntervalSince(start))
         }
         record.addSegment(phase: attributionPhase, seconds: seconds)
+        creditHourly(to: &record, phase: attributionPhase, from: segmentStartedAt, upTo: upTo)
         records[todayKey] = record
+    }
+
+    /// Credits [from, upTo) into the record's hourly buckets, splitting at
+    /// hour boundaries. Clamped to `from`'s calendar day so a segment
+    /// straddling midnight (possible for < 1 s before the tick rolls over)
+    /// never lands in the wrong day's buckets.
+    private func creditHourly(to record: inout DayRecord, phase: SitPhase, from: Date, upTo: Date) {
+        let calendar = Calendar.current
+        let dayEnd = calendar.dateInterval(of: .day, for: from)?.end ?? upTo
+        var cursor = from
+        let end = min(upTo, dayEnd)
+        while cursor < end {
+            let hourEnd = calendar.dateInterval(of: .hour, for: cursor)?.end ?? end
+            let chunkEnd = min(hourEnd, end)
+            guard chunkEnd > cursor else { break }
+            let hour = calendar.component(.hour, from: cursor)
+            record.addHourly(hour: hour, phase: phase, seconds: chunkEnd.timeIntervalSince(cursor))
+            cursor = chunkEnd
+        }
     }
 
     // MARK: - Data management

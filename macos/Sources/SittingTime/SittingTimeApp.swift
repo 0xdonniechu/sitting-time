@@ -210,7 +210,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     private func showStats() {
         if statsPanel == nil {
             let panel = NSPanel(
-                contentRect: NSRect(x: 0, y: 0, width: 520, height: 640),
+                contentRect: NSRect(x: 0, y: 0, width: 600, height: 720),
                 styleMask: [.titled, .closable, .resizable],
                 backing: .buffered, defer: false
             )
@@ -228,7 +228,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             statsPanel = panel
         }
         statsPanel?.title = Strings(store.settings.language).statsPanelTitle
-        statsPanel?.setContentSize(NSSize(width: 520, height: 640))
+        statsPanel?.setContentSize(NSSize(width: 600, height: 720))
         statsPanel?.makeKeyAndOrderFront(nil)
         NSApp.activate()
     }

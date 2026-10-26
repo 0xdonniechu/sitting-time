@@ -397,6 +397,31 @@ func installVietnamesePackForTests() {
         #expect(isNear(store.sessionRemaining, 45 * 60 - 60, tolerance: 5))
     }
 
+    @Test @MainActor func overnightSleepDiscardsGapAcrossMidnight() {
+        var settings = AppSettings()
+        settings.standGoalMinutes = 0
+        settings.autoResumeOnReturn = false
+        let calendar = Calendar.current
+        guard let start = calendar.date(bySettingHour: 23, minute: 50, second: 0, of: Date()) else {
+            Issue.record("cannot build 23:50 test date")
+            return
+        }
+        let (store, clock, idleBox, _) = makeStore(start: start, settings: settings)
+        run(store, clock, seconds: 60)
+        // Sleep through the night: one tick 9 h later, past midnight.
+        clock.advance(9 * 3600)
+        idleBox.seconds = 9 * 3600
+        store.tick()
+        #expect(store.paused == true)
+        #expect(store.autoPaused == true)
+        #expect(store.todayKey == dateKey(for: clock.now))
+        // Yesterday holds only real presence (~1 min) — the [23:51, midnight)
+        // stretch was asleep, not presence. Today starts empty.
+        let week = store.weekData()
+        #expect(isNear(week[week.count - 2].trackedSeconds, 60, tolerance: 5))
+        #expect(store.liveToday().trackedSeconds == 0)
+    }
+
     @Test @MainActor func midnightRolloverSplitsTheSegment() {
         var settings = AppSettings()
         settings.standGoalMinutes = 0
@@ -479,6 +504,32 @@ func installVietnamesePackForTests() {
         #expect(week.dropLast().allSatisfy { $0.sittingSeconds == 0 && $0.standingSeconds == 0 })
     }
 
+    @Test @MainActor func hourlySplitAcrossHourBoundary() {
+        let start = Calendar.current.date(bySettingHour: 10, minute: 59, second: 30, of: Date())!
+        let (store, clock, _, _) = makeStore(start: start)
+        // 30 s in hour 10, 60 s in hour 11 — through closed segments
+        // (checkpoints) and the open one.
+        run(store, clock, seconds: 90)
+        let today = store.liveToday()
+        #expect(isNear(today.sittingSeconds, 90))
+        #expect(isNear(today.hourly[10].sittingSeconds, 30))
+        #expect(isNear(today.hourly[11].sittingSeconds, 60))
+        #expect(today.hourly.enumerated().allSatisfy { $0.offset == 10 || $0.offset == 11 || $0.element.trackedSeconds == 0 })
+        #expect(isNear(store.weekData().last?.trackedSeconds ?? -1, 90))
+    }
+
+    @Test @MainActor func resumeBanksPausedStretchAsRest() {
+        let (store, clock, _, _) = makeStore()
+        run(store, clock, seconds: 10)
+        store.togglePause()
+        // 10 paused ticks: no checkpoint fires (tick 11–20), so without the
+        // resume-time closeSegment these seconds would vanish from history.
+        run(store, clock, seconds: 10)
+        store.togglePause()
+        #expect(isNear(store.liveToday().pausedSeconds, 10))
+        #expect(isNear(store.liveToday().hourly[10].pausedSeconds, 10))
+    }
+
     @Test @MainActor func settingsWriteAfterInitClampsWithoutRecursion() {
         // Regression test: `settings.clamp()` inside didSet re-entered didSet
         // through the @Observable wrapper forever (stack overflow on launch).
@@ -520,6 +571,36 @@ func installVietnamesePackForTests() {
         #expect(record.pausedSeconds == 10)
         #expect(record.longestSitSeconds == 150)
         #expect(record.trackedSeconds == 190)
+    }
+
+    @Test func dayRecordHourlyBuckets() {
+        var record = DayRecord(dateKey: "2026-10-25")
+        #expect(record.hourly.count == 24)
+        record.addHourly(hour: 9, phase: .sitting, seconds: 100)
+        record.addHourly(hour: 9, phase: .standing, seconds: 30)
+        record.addHourly(hour: 24, phase: .sitting, seconds: 50)
+        record.addHourly(hour: -1, phase: .sitting, seconds: 50)
+        record.addHourly(hour: 10, phase: .paused, seconds: 0)
+        #expect(record.hourly[9].sittingSeconds == 100)
+        #expect(record.hourly[9].standingSeconds == 30)
+        #expect(record.hourly[9].trackedSeconds == 130)
+        #expect(record.hourly[10].trackedSeconds == 0)
+    }
+
+    @Test func dayRecordDecodesWithoutHourlyKey() {
+        // Files written before v1.1.0 have no hourly key: totals decode,
+        // buckets default to zeros.
+        let json = #"{"dateKey":"2026-10-25","sittingSeconds":100,"standingSeconds":20,"pausedSeconds":10,"breakCount":1,"longestSitSeconds":60}"#
+        let record = try! JSONDecoder().decode(DayRecord.self, from: Data(json.utf8))
+        #expect(record.sittingSeconds == 100)
+        #expect(record.breakCount == 1)
+        #expect(record.hourly.count == 24)
+        #expect(record.hourly.allSatisfy { $0.trackedSeconds == 0 })
+        // Round-trip with hourly data survives.
+        var changed = record
+        changed.addHourly(hour: 9, phase: .sitting, seconds: 100)
+        let back = try! JSONDecoder().decode(DayRecord.self, from: JSONEncoder().encode(changed))
+        #expect(back == changed)
     }
 
     @Test func settingsClampToSaneRanges() {
@@ -883,6 +964,7 @@ func solarDate(_ year: Int, _ month: Int, _ day: Int) -> Date {
         "calendarName.vietnamese",
         "chartDay",
         "chartHour",
+        "chartRest",
         "chartSitting",
         "chartStanding",
         "clearAllButton",
@@ -952,7 +1034,11 @@ func solarDate(_ year: Int, _ month: Int, _ day: Int) -> Date {
         "soundToggle",
         "startPausedToggle",
         "statsButton",
+        "statsDailyAverage",
+        "statsDay",
+        "statsNoActivity",
         "statsPanelTitle",
+        "statsWeek",
         "statusPickerLabel",
         "supportSection",
         "systemSection",

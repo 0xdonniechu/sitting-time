@@ -108,8 +108,16 @@ public struct Strings: Sendable {
 
     // MARK: - Stats window
 
-    public var statsPanelTitle: String { t("statsPanelTitle", "7-day statistics") }
+    public var statsPanelTitle: String { t("statsPanelTitle", "Statistics") }
     public var weekTitle: String { t("weekTitle", "Last 7 days") }
+    public var statsDay: String { t("statsDay", "Day") }
+    public var statsWeek: String { t("statsWeek", "Week") }
+
+    public func statsDailyAverage(_ duration: String) -> String {
+        t("statsDailyAverage", "Daily Average {duration}", ["duration": duration])
+    }
+
+    public var statsNoActivity: String { t("statsNoActivity", "No activity yet") }
 
     public func totalLine(sitting: String, standing: String) -> String {
         t("totalLine", "Sitting {sitting} • Standing {standing}", ["sitting": sitting, "standing": standing])
@@ -119,6 +127,7 @@ public struct Strings: Sendable {
     public var chartHour: String { t("chartHour", "Hours") }
     public var chartSitting: String { t("chartSitting", "Sitting") }
     public var chartStanding: String { t("chartStanding", "Standing") }
+    public var chartRest: String { t("chartRest", "Rest") }
     public var yAxisHours: String { t("yAxisHours", "hours") }
 
     public func daySitting(_ duration: String) -> String {
