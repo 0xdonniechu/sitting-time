@@ -4,6 +4,22 @@ A lightweight Windows-first sitting and focus utility built with Tauri 2, Rust, 
 
 The current milestone includes the tray shell and a working Rust timer state machine. The compact UI renders live `MM:SS` state, while Rust owns deadlines, pause/resume behavior, session transitions, and tray actions.
 
+## Mac version
+
+A native macOS port (Swift, menu-bar only, no dependencies) lives in [`macos/`](macos/) — same model (Stand Up / Pomodoro sessions, sit/stand tracking, Screen Time-style statistics, full-screen reminders), macOS-native UI. See [`macos/README.md`](macos/README.md) for features and build instructions.
+
+| Popover (Stand Up) | Popover (Pomodoro) |
+| --- | --- |
+| ![Popover in Stand Up mode](macos/Resources/screenshots/popover-standup.png) | ![Popover in Pomodoro mode](macos/Resources/screenshots/popover-pomodoro.png) |
+
+| Statistics (Day) | Statistics (Week) |
+| --- | --- |
+| ![Statistics day view](macos/Resources/screenshots/stats-day.png) | ![Statistics week view](macos/Resources/screenshots/stats-week.png) |
+
+| Settings (sessions) | Settings (display) |
+| --- | --- |
+| ![Settings sessions](macos/Resources/screenshots/settings-sessions.png) | ![Settings display](macos/Resources/screenshots/settings-display.png) |
+
 ## Development
 
 ```bash

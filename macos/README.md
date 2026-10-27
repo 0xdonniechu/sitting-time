@@ -71,6 +71,13 @@ A raw dev run (`swift run`) works but shows a dock icon for lack of a bundle;
 the `.app` is the real way to run. "Launch at login" only works from the `.app`
 file too.
 
+<!-- TEMP: drop this note once releases are Developer ID-signed + notarized. -->
+> **"Apple could not verify…" on first launch?** Until releases are signed +
+> notarized, Gatekeeper blocks the downloaded app once. Any one of these
+> clears it: right-click the app → Open → Open; or after the block, open
+> System Settings → Privacy & Security → Open Anyway; or run
+> `xattr -dr com.apple.quarantine SittingTime.dmg` before installing.
+
 Data: `~/Library/Application Support/SittingTime/` (`records.json`, `settings.json`).
 
 ## Testing
@@ -141,6 +148,7 @@ scripts/generate-icon.swift      # paint icon + self-check + hand-assembled .icn
 Resources/Info.plist             # LSUIElement, id com.0xdonniechu.sittingtime
 Resources/LanguagePacks/vi.json  # Vietnamese pack (downloaded from public URL, never bundled)
 Resources/Zodiac/*.png           # 12 monochrome zodiac icons (transparent, element-tinted)
+Resources/screenshots/*.png      # root README screenshots (popover, stats, settings)
 ```
 
 ## Locked decisions
