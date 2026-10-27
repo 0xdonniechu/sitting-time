@@ -6,7 +6,13 @@ The current milestone includes the tray shell and a working Rust timer state mac
 
 ## Mac version
 
-A native macOS port (Swift, menu-bar only, no dependencies) lives in [`macos/`](macos/) — same model (Stand Up / Pomodoro sessions, sit/stand tracking, Screen Time-style statistics, full-screen reminders), macOS-native UI. See [`macos/README.md`](macos/README.md) for features and build instructions.
+A native macOS port (Swift, menu-bar only, no dependencies) lives in [`macos/`](macos/). See [`macos/README.md`](macos/README.md) for full details, build instructions, and testing.
+
+- Flexible work modes: Stand Up (45 work / 5 move) or Pomodoro (25 / 5 / 15) — every minute value editable, plus a daily standing goal.
+- Full history log: per-day sit/stand/rest records with 7-day totals and charts.
+- A random health quote (of 365) plus chime and full-screen flash on every session change.
+- Optional secondary calendar (Vietnamese lunar, Chinese, Hebrew, Islamic, Buddhist) with Can Chi and zodiac on the popover tile.
+- Bilingual UI: English built in, Vietnamese as a small download.
 
 | Popover (Stand Up) | Popover (Pomodoro) |
 | --- | --- |
