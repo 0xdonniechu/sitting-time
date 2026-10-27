@@ -1,8 +1,17 @@
 # SittingTime
 
-A lightweight Windows-first sitting and focus utility built with Tauri 2, Rust, and vanilla TypeScript.
+A lightweight sitting and focus utility that keeps you standing up on rhythm. Two versions:
+
+- **Windows** (Tauri 2, Rust + TypeScript) — this folder.
+- **Mac** (native Swift, menu-bar only) — [`macos/`](macos/).
+
+## Windows version
+
+Built with Tauri 2, Rust, and vanilla TypeScript.
 
 The current milestone includes the tray shell and a working Rust timer state machine. The compact UI renders live `MM:SS` state, while Rust owns deadlines, pause/resume behavior, session transitions, and tray actions.
+
+![Full-screen reminder with a health fact](screenshots/reminder-flash.png)
 
 ## Mac version
 
@@ -51,6 +60,8 @@ The project pins Rust `1.96.0` because some Windows systems with Smart App Contr
 - `src-tauri/tauri.conf.json` — window and bundle configuration
 - `SPEC.md` — product and architecture specification
 - `AGENTS.md` — implementation rules for future changes
+- `macos/` — native macOS port (Swift, menu-bar app)
+- `screenshots/` — Windows screenshots used in this README
 
 ## Current scope
 
