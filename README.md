@@ -13,7 +13,7 @@ The current milestone includes the tray shell and a working Rust timer state mac
 
 | Work done → stand up | Break over → back to work |
 | --- | --- |
-| ![Full-screen reminder with a health fact](screenshots/reminder-flash.png) | ![Break-over reminder with a health fact](screenshots/reminder-break-over.png) |
+| <img src="screenshots/reminder-flash.png" width="400" alt="Full-screen reminder with a health fact"> | <img src="screenshots/reminder-break-over.png" width="400" alt="Break-over reminder with a health fact"> |
 
 ## Mac version
 
@@ -27,15 +27,15 @@ A native macOS port (Swift, menu-bar only, no dependencies) lives in [`macos/`](
 
 | Popover (Stand Up) | Popover (Pomodoro) |
 | --- | --- |
-| ![Popover in Stand Up mode](macos/Resources/screenshots/popover-standup.png) | ![Popover in Pomodoro mode](macos/Resources/screenshots/popover-pomodoro.png) |
+| <img src="macos/Resources/screenshots/popover-standup.png" width="400" alt="Popover in Stand Up mode"> | <img src="macos/Resources/screenshots/popover-pomodoro.png" width="400" alt="Popover in Pomodoro mode"> |
 
 | Statistics (Day) | Statistics (Week) |
 | --- | --- |
-| ![Statistics day view](macos/Resources/screenshots/stats-day.png) | ![Statistics week view](macos/Resources/screenshots/stats-week.png) |
+| <img src="macos/Resources/screenshots/stats-day.png" width="400" alt="Statistics day view"> | <img src="macos/Resources/screenshots/stats-week.png" width="400" alt="Statistics week view"> |
 
 | Settings (sessions) | Settings (display) |
 | --- | --- |
-| ![Settings sessions](macos/Resources/screenshots/settings-sessions.png) | ![Settings display](macos/Resources/screenshots/settings-display.png) |
+| <img src="macos/Resources/screenshots/settings-sessions.png" width="400" alt="Settings sessions"> | <img src="macos/Resources/screenshots/settings-display.png" width="400" alt="Settings display"> |
 
 ## Development
 
