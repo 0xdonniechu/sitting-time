@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 720" role="img" aria-labelledby="title desc">
+  <title id="title">SittingTime weekly statistics preview</title>
+  <desc id="desc">An illustrative week view with sitting, standing, and rest totals, a stacked daily chart, and a daily breakdown.</desc>
+  <defs><filter id="shadow" x="-12%" y="-15%" width="124%" height="140%"><feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#1a2f3b" flood-opacity=".12"/></filter></defs>
+  <rect width="1120" height="720" rx="25" fill="#edf2f4"/>
+  <rect x="75" y="45" width="970" height="630" rx="22" fill="#fff" stroke="#dce1e4" filter="url(#shadow)"/>
+  <text x="115" y="103" fill="#6e7780" font-family="Arial,sans-serif" font-size="13">‹ Back to timer</text>
+  <rect x="820" y="75" width="180" height="42" rx="10" fill="#f0f2f4"/><rect x="911" y="79" width="85" height="34" rx="8" fill="#fff" stroke="#d6dce0"/><text x="865" y="101" text-anchor="middle" fill="#727b82" font-family="Arial,sans-serif" font-size="13">Day</text><text x="953" y="101" text-anchor="middle" fill="#145595" font-family="Arial,sans-serif" font-size="13" font-weight="700">Week</text>
+  <text x="115" y="159" fill="#232a30" font-family="Arial,sans-serif" font-size="28" font-weight="700">Statistics</text>
+  <text x="115" y="216" fill="#1d2930" font-family="Arial,sans-serif" font-size="43" font-weight="600">18h 42m</text><text x="116" y="243" fill="#6d777e" font-family="Arial,sans-serif" font-size="14">Weekly total · 2h 40m daily average</text>
+  <rect x="118" y="274" width="860" height="202" rx="12" fill="#fbfcfc" stroke="#edf0f1"/>
+  <path d="M158 426H948M158 378H948M158 330H948" stroke="#e8ecee" stroke-dasharray="4 5"/>
+  <g fill="#f08b49"><rect x="205" y="350" width="46" height="76" rx="4"/><rect x="311" y="328" width="46" height="98" rx="4"/><rect x="417" y="365" width="46" height="61" rx="4"/><rect x="523" y="319" width="46" height="107" rx="4"/><rect x="629" y="343" width="46" height="83" rx="4"/><rect x="735" y="333" width="46" height="93" rx="4"/><rect x="841" y="370" width="46" height="56" rx="4"/></g>
+  <g fill="#67bd70"><rect x="205" y="333" width="46" height="17" rx="4"/><rect x="311" y="300" width="46" height="28" rx="4"/><rect x="417" y="348" width="46" height="17" rx="4"/><rect x="523" y="285" width="46" height="34" rx="4"/><rect x="629" y="319" width="46" height="24" rx="4"/><rect x="735" y="304" width="46" height="29" rx="4"/><rect x="841" y="355" width="46" height="15" rx="4"/></g>
+  <g fill="#a9afb5"><rect x="205" y="322" width="46" height="11" rx="4"/><rect x="311" y="282" width="46" height="18" rx="4"/><rect x="417" y="334" width="46" height="14" rx="4"/><rect x="523" y="266" width="46" height="19" rx="4"/><rect x="629" y="303" width="46" height="16" rx="4"/><rect x="735" y="284" width="46" height="20" rx="4"/><rect x="841" y="338" width="46" height="17" rx="4"/></g>
+  <g fill="#6f7980" font-family="Arial,sans-serif" font-size="12" text-anchor="middle"><text x="228" y="452">Mon</text><text x="334" y="452">Tue</text><text x="440" y="452">Wed</text><text x="546" y="452">Thu</text><text x="652" y="452">Fri</text><text x="758" y="452">Sat</text><text x="864" y="452">Sun</text></g>
+  <circle cx="143" cy="508" r="6" fill="#f08b49"/><text x="158" y="513" fill="#414b52" font-family="Arial,sans-serif" font-size="13">Sitting</text><circle cx="262" cy="508" r="6" fill="#67bd70"/><text x="277" y="513" fill="#414b52" font-family="Arial,sans-serif" font-size="13">Standing</text><circle cx="394" cy="508" r="6" fill="#a9afb5"/><text x="409" y="513" fill="#414b52" font-family="Arial,sans-serif" font-size="13">Rest</text>
+  <path d="M115 538H1002" stroke="#e8ebed"/><text x="115" y="574" fill="#283139" font-family="Arial,sans-serif" font-size="15" font-weight="700">WEEKLY BREAKDOWN</text>
+  <text x="115" y="610" fill="#59636a" font-family="Arial,sans-serif" font-size="13">Breaks completed</text><text x="1000" y="610" text-anchor="end" fill="#303941" font-family="Arial,sans-serif" font-size="13" font-weight="700">18</text>
+  <text x="115" y="640" fill="#59636a" font-family="Arial,sans-serif" font-size="13">Longest sitting stretch</text><text x="1000" y="640" text-anchor="end" fill="#303941" font-family="Arial,sans-serif" font-size="13" font-weight="700">1h 12m</text>
+  <rect x="844" y="548" width="156" height="24" rx="12" fill="#fff4e5"/><text x="922" y="564" text-anchor="middle" fill="#9d692d" font-family="Arial,sans-serif" font-size="10" font-weight="700">ILLUSTRATIVE SAMPLE</text>
+</svg>

@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="480 48 400 690" role="img" aria-labelledby="title desc">
+  <title id="title">SittingTime macOS menu bar preview</title>
+  <desc id="desc">A close-up illustrative macOS menu bar app panel with a live countdown, posture control, timer modes, and today's sitting and standing totals.</desc>
+  <defs><linearGradient id="desk" x2="0" y2="1"><stop stop-color="#e5edf2"/><stop offset="1" stop-color="#cfdde7"/></linearGradient><filter id="shadow" x="-15%" y="-15%" width="130%" height="140%"><feDropShadow dx="0" dy="16" stdDeviation="18" flood-color="#1b3443" flood-opacity=".18"/></filter></defs>
+  <rect x="480" y="48" width="400" height="690" rx="28" fill="url(#desk)"/>
+  <rect x="500" y="66" width="356" height="650" rx="15" fill="#fff" stroke="#c9d0d6" filter="url(#shadow)"/>
+  <text x="526" y="110" fill="#252d33" font-family="Arial,sans-serif" font-size="19" font-weight="700">Sitting</text>
+  <text x="526" y="151" fill="#25333b" font-family="monospace" font-size="38" font-weight="600">32:18</text>
+  <rect x="526" y="174" width="304" height="7" rx="4" fill="#e8ecef"/><rect x="526" y="174" width="126" height="7" rx="4" fill="#5ca8d9"/>
+  <rect x="526" y="198" width="148" height="32" rx="8" fill="#f0f2f4"/><rect x="600" y="201" width="71" height="26" rx="7" fill="#fff" stroke="#d7dce0"/><text x="563" y="219" text-anchor="middle" fill="#6c747a" font-family="Arial,sans-serif" font-size="12">Sit</text><text x="635" y="219" text-anchor="middle" fill="#315e7d" font-family="Arial,sans-serif" font-size="12" font-weight="700">Stand</text>
+  <rect x="530" y="250" width="142" height="39" rx="10" fill="#1f6caa"/><text x="601" y="275" text-anchor="middle" fill="#fff" font-family="Arial,sans-serif" font-size="13" font-weight="700">Pause</text><rect x="680" y="250" width="142" height="39" rx="10" fill="#fff" stroke="#ccd2d7"/><text x="751" y="275" text-anchor="middle" fill="#3c454b" font-family="Arial,sans-serif" font-size="13">Skip</text>
+  <rect x="526" y="306" width="304" height="38" rx="9" fill="#f0f2f4"/><rect x="679" y="309" width="148" height="32" rx="7" fill="#fff" stroke="#d7dce0"/><text x="601" y="330" text-anchor="middle" fill="#6c747a" font-family="Arial,sans-serif" font-size="12">Stand Up</text><text x="753" y="330" text-anchor="middle" fill="#315e7d" font-family="Arial,sans-serif" font-size="12" font-weight="700">Pomodoro</text>
+  <path d="M526 366h304" stroke="#e3e6e8"/>
+  <text x="526" y="399" fill="#303840" font-family="Arial,sans-serif" font-size="14" font-weight="700">Today</text>
+  <circle cx="535" cy="429" r="5" fill="#f08b49"/><text x="549" y="434" fill="#555f66" font-family="Arial,sans-serif" font-size="12">Sitting</text><text x="820" y="434" text-anchor="end" fill="#303840" font-family="monospace" font-size="12">2h 14m</text>
+  <circle cx="535" cy="457" r="5" fill="#58ad66"/><text x="549" y="462" fill="#555f66" font-family="Arial,sans-serif" font-size="12">Standing</text><text x="820" y="462" text-anchor="end" fill="#303840" font-family="monospace" font-size="12">36m</text>
+  <circle cx="535" cy="485" r="5" fill="#999fa5"/><text x="549" y="490" fill="#555f66" font-family="Arial,sans-serif" font-size="12">Rest</text><text x="820" y="490" text-anchor="end" fill="#303840" font-family="monospace" font-size="12">42m</text>
+  <text x="526" y="523" fill="#737c82" font-family="Arial,sans-serif" font-size="11">Standing goal · 36 of 60 min</text><rect x="526" y="534" width="304" height="5" rx="3" fill="#e5e9e5"/><rect x="526" y="534" width="182" height="5" rx="3" fill="#72bb67"/>
+  <text x="526" y="571" fill="#737c82" font-family="Arial,sans-serif" font-size="11">4 breaks · longest sit 47 min</text>
+  <path d="M526 592h304" stroke="#e3e6e8"/>
+  <circle cx="540" cy="617" r="8" fill="#eef1f2"/><path d="M536 617h8m-4-4v8" stroke="#717a80" stroke-width="1.5"/><circle cx="578" cy="617" r="8" fill="#eef1f2"/><path d="M574 617h8m-4-4v8" stroke="#717a80" stroke-width="1.5"/><circle cx="616" cy="617" r="8" fill="#eef1f2"/><text x="616" y="621" text-anchor="middle" fill="#717a80" font-family="Arial,sans-serif" font-size="10">i</text><text x="644" y="621" fill="#956f4e" font-family="Arial,sans-serif" font-size="10">Buy me a coffee</text><circle cx="815" cy="617" r="8" fill="#eef1f2"/><text x="815" y="621" text-anchor="middle" fill="#717a80" font-family="Arial,sans-serif" font-size="10">⏻</text>
+</svg>
