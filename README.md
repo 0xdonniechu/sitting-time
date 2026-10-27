@@ -11,7 +11,9 @@ Built with Tauri 2, Rust, and vanilla TypeScript.
 
 The current milestone includes the tray shell and a working Rust timer state machine. The compact UI renders live `MM:SS` state, while Rust owns deadlines, pause/resume behavior, session transitions, and tray actions.
 
-![Full-screen reminder with a health fact](screenshots/reminder-flash.png)
+| Work done → stand up | Break over → back to work |
+| --- | --- |
+| ![Full-screen reminder with a health fact](screenshots/reminder-flash.png) | ![Break-over reminder with a health fact](screenshots/reminder-break-over.png) |
 
 ## Mac version
 
