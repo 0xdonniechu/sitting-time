@@ -52,6 +52,8 @@ Windows development requires Rust/Cargo, Microsoft C++ Build Tools, WebView2, an
 
 The project pins Rust `1.96.0` because some Windows systems with Smart App Control currently block Rust `1.97.1` build executables during Cargo compilation.
 
+On Windows, notification identity is correct for an installed build. During `tauri dev`, Windows may attribute development notifications to PowerShell.
+
 ## Project layout
 
 - `src/` — minimal frontend renderer
@@ -63,20 +65,12 @@ The project pins Rust `1.96.0` because some Windows systems with Smart App Contr
 - `macos/` — native macOS port (Swift, menu-bar app)
 - `screenshots/` — Windows screenshots used in this README
 
-## Current scope
+## Features
 
-- Pomodoro and Stand Up cycles use their product defaults.
-- Start, pause/resume, skip, reset command, mode switching, and live seconds work.
-- Inter Variable is bundled locally for consistent macOS-inspired typography on Windows.
-- The visible countdown polls Rust snapshots; JavaScript does not calculate elapsed time.
-- Closing the window keeps both the process and timer alive.
-- Settings, active timer state and per-day statistics persist to a local `state.json` file.
+- Pomodoro and Stand Up cycles with product defaults; start, pause/resume, skip, reset, mode switching, and live seconds.
 - Screen Time-style Statistics (Day/Week, hourly bars, break counts, longest sit) with a configurable daily standing goal.
-- Bilingual UI (English/Vietnamese), About panel, "Buy me a coffee" link, zodiac animal on the calendar tile.
-- Switching Stand Up / Pomodoro keeps the running session.
-- Native session notifications and optional launch-at-login use official Tauri plugins.
-- Optional full-screen reminders provide a brief screen flash, centered session message, and independently configurable alert sound.
-- Full-screen reminders can show a short bilingual (Vietnamese/English) health fact with an emoji; on by default and can be turned off in Settings.
-- Start-minimized-to-tray is configurable.
-
-On Windows, notification identity is correct for an installed build. During `tauri dev`, Windows may attribute development notifications to PowerShell.
+- Bilingual UI (English/Vietnamese).
+- Full-screen reminders with a short bilingual health fact and independently configurable alert sound.
+- Native session notifications and optional launch at login.
+- Lives in the tray: closing the window keeps the timer running; optional start minimized.
+- Settings, timer state, and per-day statistics persist locally.
