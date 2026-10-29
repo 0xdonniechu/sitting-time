@@ -365,7 +365,7 @@ button:focus-visible { outline: 3px solid color-mix(in srgb, var(--bright) 45%, 
 
 .link-row { width: 100%; min-height: 43px; display: flex; align-items: center; justify-content: space-between; padding: 7px 12px; border: 0; border-radius: 10px; background: rgb(255 255 255 / 80%); font-size: 13px; color: var(--strong); font-weight: 650; cursor: pointer; }
 .select-field select { border: 0; background: transparent; font: inherit; color: inherit; text-align: right; outline: 0; cursor: pointer; }
-.footer-note { margin: 14px 0 0; color: #8e8e93; text-align: center; font-size: 11px; line-height: 1.5; }
+.footer-note { margin: 14px 0 0; color: #8e8e93; text-align: center; font-size: 11px; line-height: 1.5; text-wrap: balance; }
 
 .about-body h3 { margin: 4px 0 2px; font-size: 21px; font-weight: 650; letter-spacing: -.02em; }
 .about-version { margin: 0 0 8px; color: #8e8e93; font-size: 13px; font-variant-numeric: tabular-nums; }

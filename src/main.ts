@@ -247,7 +247,7 @@ app.innerHTML = `
     <div class="welcome-body">
       <figure class="welcome-meme"><img src="./tom-cruise-programmers.png" alt="Meme contrasting Tom Cruise at 60 clinging to an aircraft with a programmer at 30 holding their sore lower back." /></figure>
       <h2 class="welcome-title" data-i18n="welcomeTitle">Your spine keeps the score</h2>
-      <p class="welcome-text" data-i18n="welcomeBody">SittingTime reminds you to stand up every 45 minutes. The meme is funny — back pain isn't.</p>
+      <p class="welcome-text" data-i18n="welcomeBody">SittingTime reminds you to stand up every 45 minutes. The meme is funny, back pain isn't.</p>
       <button class="save-button" id="welcome-start" type="button" data-i18n="welcomeStart">Get started</button>
     </div>
   </section>
@@ -261,8 +261,8 @@ app.innerHTML = `
     <div class="about-body">
       <h3>SittingTime</h3>
       <p class="about-version" id="about-version"></p>
-      <p class="about-madeby"><span data-i18n="madeBy">Made by</span> <button class="text-link" id="about-author">0xdonniechu</button></p>
-      <p class="about-star"><span data-i18n="starNote">If this app helps your spine and discs, please star it on</span> <button class="text-link" id="about-star" data-i18n="starRepo">GitHub</button> <span data-i18n="starThanks">— thank you!</span></p>
+      <p class="about-madeby"><span data-i18n="madeBy">Developed by</span> <button class="text-link" id="about-author">0xdonniechu</button><span data-i18n="missionSuffix">, on a mission to save spines and discs.</span></p>
+      <p class="about-star"><span data-i18n="starNote">If this app helps your spine and discs, please star it on</span> <button class="text-link" id="about-star" data-i18n="starRepo">GitHub</button> <span data-i18n="starThanks">, thank you!</span></p>
       <button class="preview-button" id="about-bug" type="button" data-i18n="reportBug">Report a Bug</button>
       <button class="coffee-pill wide" id="about-donate" type="button" data-i18n="buyCoffee">Buy me a coffee</button>
       <p class="footer-note" id="about-note"></p>
