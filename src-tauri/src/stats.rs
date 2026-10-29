@@ -166,11 +166,19 @@ impl StatsStore {
             }
         }
         let gapped = self.gap_discarded(now_ms);
+        // A new segment starts at now only across a boundary (phase switch,
+        // idle span, sleep gap). Within one phase the sub-second remainder
+        // close_current carried must survive: the worker calls this every
+        // ~200 ms, and resetting here would credit 0 seconds forever while
+        // breaks keep counting.
+        let restart_segment = gapped || self.current_phase != phase;
         self.close_current(now_ms);
         self.current_phase = phase;
         match phase {
             Some(Phase::Sitting) => {
-                self.segment_start_ms = now_ms;
+                if restart_segment {
+                    self.segment_start_ms = now_ms;
+                }
                 if gapped || self.stretch_start_ms.is_none() {
                     // Sleep ends the stretch, like macOS clearing the stretch
                     // clock on wake.
@@ -178,7 +186,9 @@ impl StatsStore {
                 }
             }
             Some(_) => {
-                self.segment_start_ms = now_ms;
+                if restart_segment {
+                    self.segment_start_ms = now_ms;
+                }
                 self.stretch_start_ms = None;
             }
             None => {
@@ -545,6 +555,22 @@ mod tests {
         let closed = store.live_today(BASE + 10 * MIN);
         assert_eq!(closed.sitting_seconds, 600);
         assert_eq!(closed.paused_seconds, 0);
+    }
+
+    #[test]
+    fn subsecond_cadence_accrues_whole_seconds() {
+        // Production calls set_phase every ~200 ms (worker + frontend poll).
+        // Sub-second remainders must accumulate across calls: resetting the
+        // segment to now on every call freezes all stats at zero while
+        // breaks keep counting.
+        let mut store = StatsStore::default();
+        store.set_phase(BASE, Some(Phase::Sitting));
+        for step in 1..=50 {
+            store.set_phase(BASE + step * 200, Some(Phase::Sitting));
+        }
+        let today = store.live_today(BASE + 10_000);
+        assert_eq!(today.sitting_seconds, 10);
+        assert_eq!(today.longest_sit_seconds, 10);
     }
 
     #[test]
