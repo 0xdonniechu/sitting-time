@@ -312,7 +312,7 @@ export const QUOTES: DailyQuote[] = [
   { en: "Curiosity is the key to creativity.", vi: "Tò mò là chìa khóa của sáng tạo.", author: "Akio Morita" },
   { en: "If you go through life convinced that your way is always best, all the new ideas in the world will pass you by.", vi: "Nếu cứ tin cách mình luôn đúng, mọi ý tưởng mới trên đời sẽ lướt qua bạn.", author: "Akio Morita" },
   { en: "There is no secret ingredient or hidden formula responsible for the success of the best Japanese companies.", vi: "Không có bí kíp hay công thức ẩn nào đằng sau thành công của các công ty Nhật tốt nhất.", author: "Akio Morita" },
-  { en: "Ideas are a commodity. Execution of them is not.", vi: "Ý tưởng là một thứ hàng hóa. Việc thực hiện chúng thì không phải vậy.", author: "Michael Dell" },
+  { en: "Make something people want.", vi: "Hãy làm thứ người ta muốn.", author: "Paul Graham" },
   { en: "Celebrate for a nanosecond, then move on.", vi: "Ăn mừng một tích tắc, rồi bước tiếp.", author: "Michael Dell" },
   { en: "The best place to succeed is where you are with what you have.", vi: "Nơi tốt nhất để thành công là nơi bạn đang đứng với thứ bạn đang có.", author: "Charles Schwab" },
   { en: "When you are through changing, you are through.", vi: "Ngừng thay đổi là ngừng tồn tại.", author: "Charles Schwab" },
