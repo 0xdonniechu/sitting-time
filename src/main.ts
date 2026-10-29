@@ -339,6 +339,27 @@ const sessionKeys: Record<SessionKind, string> = {
   move: "sessionMove",
 };
 
+function isWorkSession(session: SessionKind): boolean {
+  return session === "focus" || session === "sitting";
+}
+
+/// Pill under the countdown: during work the posture decides (Sit/Stand),
+/// breaks always show their own name.
+function sessionLabelText(state: TimerSnapshot): string {
+  if (isWorkSession(state.session) && state.posture === "standing") {
+    return t(lang, "postureStand");
+  }
+  return t(lang, sessionKeys[state.session]);
+}
+
+/// Timer state, with the running text following the session: working
+/// during work, resting during breaks.
+function statusText(state: TimerSnapshot): string {
+  if (state.status === "paused") return t(lang, "statusPaused");
+  if (state.status !== "running") return t(lang, "statusReady");
+  return t(lang, isWorkSession(state.session) ? "statusWorking" : "statusResting");
+}
+
 /** Rewrites every static label for the active language. Dynamic content
  * re-renders through render()/renderStats(). */
 function applyI18n(): void {
@@ -446,13 +467,8 @@ function render(state: TimerSnapshot): void {
   modeTitle.textContent = isPomodoro ? t(lang, "modePomodoro") : t(lang, "modeStandUp");
   modeAfter.textContent = modeAfterText(isPomodoro);
   timerEl.textContent = formatTime(state.remainingSeconds);
-  sessionLabel.textContent = t(lang, sessionKeys[state.session]);
-  statusEl.textContent =
-    state.status === "running"
-      ? t(lang, "statusRunning")
-      : state.status === "paused"
-        ? t(lang, "statusPaused")
-        : t(lang, "statusReady");
+  sessionLabel.textContent = sessionLabelText(state);
+  statusEl.textContent = statusText(state);
   cycleEl.textContent = isPomodoro
     ? t(lang, "cycleSession", { i: currentFocusNumber, n: state.focusSessionsBeforeLongBreak })
     : standUpCycleText();
