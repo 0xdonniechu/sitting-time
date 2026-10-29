@@ -5,7 +5,7 @@ import { disable, enable, isEnabled } from "@tauri-apps/plugin-autostart";
 import { isPermissionGranted, requestPermission } from "@tauri-apps/plugin-notification";
 import "@fontsource-variable/inter";
 import "./styles.css";
-import { formatDuration, t, type Language } from "./strings";
+import { t, type Language } from "./strings";
 
 type TimerMode = "pomodoro" | "standUp";
 type SessionKind = "focus" | "shortBreak" | "longBreak" | "sitting" | "move";
@@ -389,12 +389,14 @@ function standUpCycleText(): string {
 }
 
 /// "after 45 minutes" beside the mode title: the work-session length of the
-/// active mode, following the settings. formatDuration handles plurals.
+/// active mode, following the settings. Plain minutes, never compounding
+/// into hours; clock format here would read as a time of day.
 function modeAfterText(isPomodoro: boolean): string {
   const minutes = isPomodoro
     ? (currentSettings?.focusMinutes ?? 25)
     : (currentSettings?.sittingMinutes ?? 45);
-  return t(lang, "modeAfter", { duration: formatDuration(minutes * 60, lang) });
+  if (lang === "en" && minutes === 1) return t(lang, "modeAfterOne");
+  return t(lang, "modeAfterOther", { n: minutes });
 }
 
 function formatTime(seconds: number): string {
@@ -409,7 +411,7 @@ function formatTime(seconds: number): string {
 }
 
 function breaksText(record: DayRecord): string {
-  const longest = formatDuration(record.longestSitSeconds, lang);
+  const longest = formatTime(record.longestSitSeconds);
   if (lang === "en" && record.breakCount === 1) {
     return t(lang, "breaksLineOne", { count: 1, longest });
   }
@@ -418,16 +420,16 @@ function breaksText(record: DayRecord): string {
 
 function renderToday(): void {
   const record = statsCache?.today;
-  todaySitting.textContent = formatDuration(record?.sittingSeconds ?? 0, lang);
-  todayStanding.textContent = formatDuration(record?.standingSeconds ?? 0, lang);
-  todayRest.textContent = formatDuration(record?.pausedSeconds ?? 0, lang);
+  todaySitting.textContent = formatTime(record?.sittingSeconds ?? 0);
+  todayStanding.textContent = formatTime(record?.standingSeconds ?? 0);
+  todayRest.textContent = formatTime(record?.pausedSeconds ?? 0);
   breaksLine.textContent = record ? breaksText(record) : "";
   const goal = currentSettings?.standGoalMinutes ?? 0;
   if (goal > 0 && record) {
     goalProgress.classList.remove("hidden");
     const ratio = Math.min(1, record.standingSeconds / (goal * 60));
     goalFill.style.width = `${ratio * 100}%`;
-    goalLabel.textContent = t(lang, "goalProgress", { goal: formatDuration(goal * 60, lang) });
+    goalLabel.textContent = t(lang, "goalProgress", { goal: formatTime(goal * 60) });
   } else {
     goalProgress.classList.add("hidden");
   }
@@ -487,7 +489,7 @@ async function refreshStats(): Promise<void> {
 const BAR_COLORS = { sitting: "#e8830c", standing: "#2da44e", rest: "#9aa0a6" };
 
 function legendRow(labelKey: string, color: string, seconds: number): string {
-  return `<div class="legend-row"><span class="dot" style="background:${color}"></span><span>${t(lang, labelKey)}</span><b>${formatDuration(seconds, lang)}</b></div>`;
+  return `<div class="legend-row"><span class="dot" style="background:${color}"></span><span>${t(lang, labelKey)}</span><b>${formatTime(seconds)}</b></div>`;
 }
 
 function renderStats(): void {
@@ -496,7 +498,7 @@ function renderStats(): void {
     button.classList.toggle("active", button.dataset.scope === statsScope);
   });
   if (!snapshot) {
-    statsTotal.textContent = formatDuration(0, lang);
+    statsTotal.textContent = formatTime(0);
     return;
   }
   const week = snapshot.week;
@@ -505,10 +507,10 @@ function renderStats(): void {
   const rest = statsScope === "day" ? snapshot.today.pausedSeconds : week.reduce((sum, day) => sum + day.pausedSeconds, 0);
   const total = sit + stand + rest;
 
-  statsTotal.textContent = formatDuration(total, lang);
+  statsTotal.textContent = formatTime(total);
   if (statsScope === "week") {
     statsAverage.classList.remove("hidden");
-    statsAverage.textContent = t(lang, "dailyAverage", { duration: formatDuration(total / 7, lang) });
+    statsAverage.textContent = t(lang, "dailyAverage", { duration: formatTime(total / 7) });
   } else {
     statsAverage.classList.add("hidden");
   }
@@ -528,7 +530,7 @@ function renderStats(): void {
         const wrap = document.createElement("div");
         wrap.className = "goal-progress";
         const ratio = Math.min(1, snapshot.today.standingSeconds / (goal * 60));
-        wrap.innerHTML = `<div class="goal-bar" aria-hidden="true"><span style="width:${ratio * 100}%"></span></div><p>${t(lang, "goalProgress", { goal: formatDuration(goal * 60, lang) })}</p>`;
+        wrap.innerHTML = `<div class="goal-bar" aria-hidden="true"><span style="width:${ratio * 100}%"></span></div><p>${t(lang, "goalProgress", { goal: formatTime(goal * 60) })}</p>`;
         statsRows.appendChild(wrap);
       }
     } else {
@@ -595,7 +597,7 @@ function renderWeekChart(week: WeekDay[]): HTMLElement {
   week.forEach((day) => {
     const col = document.createElement("div");
     col.className = "bar-col";
-    col.title = `${day.label}: ${formatDuration(day.sittingSeconds + day.standingSeconds + day.pausedSeconds, lang)}`;
+    col.title = `${day.label}: ${formatTime(day.sittingSeconds + day.standingSeconds + day.pausedSeconds)}`;
     const total = day.sittingSeconds + day.standingSeconds + day.pausedSeconds;
     if (total > 0) {
       ([
@@ -631,7 +633,7 @@ function renderWeekRow(day: WeekDay): HTMLElement {
       <span style="width:${pct(day.sittingSeconds)};background:${BAR_COLORS.sitting}"></span><span style="width:${pct(day.standingSeconds)};background:${BAR_COLORS.standing}"></span><span style="width:${pct(day.pausedSeconds)};background:${BAR_COLORS.rest}"></span>
     </span>`;
   }
-  row.innerHTML = `<span class="week-day">${day.label}</span>${bar}<b>${formatDuration(total, lang)}</b>`;
+  row.innerHTML = `<span class="week-day">${day.label}</span>${bar}<b>${formatTime(total)}</b>`;
   return row;
 }
 
@@ -893,4 +895,3 @@ async function boot(): Promise<void> {
 }
 
 void boot();
-

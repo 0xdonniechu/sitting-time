@@ -10,7 +10,8 @@ const en: Table = {
   appName: "SittingTime",
   modePomodoro: "Pomodoro",
   modeStandUp: "Stand Up",
-  modeAfter: "after {duration}",
+  modeAfterOne: "after 1 minute",
+  modeAfterOther: "after {n} minutes",
   postureSit: "Sit",
   postureStand: "Stand",
   start: "Start",
@@ -94,19 +95,14 @@ const en: Table = {
   chartStanding: "Standing",
   chartRest: "Rest",
   yAxisHours: "hours",
-  unitHourOne: "1 hour",
-  unitHourOther: "{n} hours",
-  unitMinuteOne: "1 minute",
-  unitMinuteOther: "{n} minutes",
-  unitSecondOne: "1 second",
-  unitSecondOther: "{n} seconds",
 };
 
 const vi: Table = {
   appName: "SittingTime",
   modePomodoro: "Pomodoro",
   modeStandUp: "Stand Up",
-  modeAfter: "sau {duration}",
+  modeAfterOne: "sau 1 phút",
+  modeAfterOther: "sau {n} phút",
   postureSit: "Ngồi",
   postureStand: "Đứng",
   start: "Bắt đầu",
@@ -190,12 +186,6 @@ const vi: Table = {
   chartStanding: "Đứng",
   chartRest: "Nghỉ",
   yAxisHours: "giờ",
-  unitHourOne: "{n} giờ",
-  unitHourOther: "{n} giờ",
-  unitMinuteOne: "{n} phút",
-  unitMinuteOther: "{n} phút",
-  unitSecondOne: "{n} giây",
-  unitSecondOther: "{n} giây",
 };
 
 export function t(lang: Language, key: string, args?: Record<string, string | number>): string {
@@ -206,23 +196,3 @@ export function t(lang: Language, key: string, args?: Record<string, string | nu
     args[name] !== undefined ? String(args[name]) : `{${name}}`,
   );
 }
-
-function unit(lang: Language, value: number, oneKey: string, otherKey: string): string {
-  const key = lang === "en" && value === 1 ? oneKey : otherKey;
-  return t(lang, key, { n: value });
-}
-
-/// `"2 hours 15 minutes"`, `"45 minutes"`, `"30 seconds"` (or the Vietnamese
-/// equivalents without plurals). Used for totals and stats, like macOS.
-export function formatDuration(seconds: number, lang: Language): string {
-  const total = Math.max(0, Math.round(seconds));
-  const hours = Math.floor(total / 3600);
-  const minutes = Math.floor((total % 3600) / 60);
-  if (hours > 0 && minutes > 0) {
-    return `${unit(lang, hours, "unitHourOne", "unitHourOther")} ${unit(lang, minutes, "unitMinuteOne", "unitMinuteOther")}`;
-  }
-  if (hours > 0) return unit(lang, hours, "unitHourOne", "unitHourOther");
-  if (minutes > 0) return unit(lang, minutes, "unitMinuteOne", "unitMinuteOther");
-  return unit(lang, total, "unitSecondOne", "unitSecondOther");
-}
-
