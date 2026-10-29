@@ -151,6 +151,8 @@ h1 { margin: 0; font-size: 21px; line-height: 1.2; font-weight: 620; letter-spac
   letter-spacing: -.01em;
 }
 .status { margin-top: 6px; color: #6e6e73; font-size: 12px; }
+/* Daily quote replaces the status line: slightly smaller, two lines max. */
+.status.quote { font-size: 11px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .cycle { margin-top: 6px; color: #8e8e93; font-size: 11px; }
 
 /* Sit/Stand posture picker, like the macOS segmented control above

@@ -6,6 +6,7 @@ import { isPermissionGranted, requestPermission } from "@tauri-apps/plugin-notif
 import "@fontsource-variable/inter";
 import "./styles.css";
 import { t, type Language } from "./strings";
+import { dailyQuote } from "./quotes";
 
 type TimerMode = "pomodoro" | "standUp";
 type SessionKind = "focus" | "shortBreak" | "longBreak" | "sitting" | "move";
@@ -36,6 +37,7 @@ interface SettingsPayload {
   fullscreenRemindersEnabled: boolean;
   alertSoundEnabled: boolean;
   healthFactsEnabled: boolean;
+  dailyQuoteEnabled: boolean;
   startMinimizedToTray: boolean;
   language: Language;
   standGoalMinutes: number;
@@ -200,6 +202,7 @@ app.innerHTML = `
         <label class="toggle-row"><span data-i18n="toggleFullscreen">Full-screen reminders</span><input name="fullscreenRemindersEnabled" type="checkbox"><i></i></label>
         <label class="toggle-row"><span data-i18n="toggleSound">Alert sound</span><input name="alertSoundEnabled" type="checkbox"><i></i></label>
         <label class="toggle-row"><span data-i18n="toggleFacts">Health facts on reminders</span><input name="healthFactsEnabled" type="checkbox"><i></i></label>
+        <label class="toggle-row"><span data-i18n="toggleQuote">Daily quote</span><input name="dailyQuoteEnabled" type="checkbox"><i></i></label>
         <label class="toggle-row"><span data-i18n="toggleMinimized">Start minimized to tray</span><input name="startMinimizedToTray" type="checkbox"><i></i></label>
       </div>
       <div class="settings-group">
@@ -468,7 +471,15 @@ function render(state: TimerSnapshot): void {
   modeAfter.textContent = modeAfterText(isPomodoro);
   timerEl.textContent = formatTime(state.remainingSeconds);
   sessionLabel.textContent = sessionLabelText(state);
-  statusEl.textContent = statusText(state);
+  const quotesOn = currentSettings?.dailyQuoteEnabled ?? false;
+  if (quotesOn) {
+    const quote = dailyQuote(lang, new Date());
+    statusEl.textContent = `"${quote.text}" (${quote.author})`;
+    statusEl.classList.add("quote");
+  } else {
+    statusEl.textContent = statusText(state);
+    statusEl.classList.remove("quote");
+  }
   cycleEl.textContent = isPomodoro
     ? t(lang, "cycleSession", { i: currentFocusNumber, n: state.focusSessionsBeforeLongBreak })
     : standUpCycleText();
@@ -712,6 +723,7 @@ async function openSettings(): Promise<void> {
     field<HTMLInputElement>("fullscreenRemindersEnabled").checked = settings.fullscreenRemindersEnabled;
     field<HTMLInputElement>("alertSoundEnabled").checked = settings.alertSoundEnabled;
     field<HTMLInputElement>("healthFactsEnabled").checked = settings.healthFactsEnabled;
+    field<HTMLInputElement>("dailyQuoteEnabled").checked = settings.dailyQuoteEnabled;
     field<HTMLInputElement>("startMinimizedToTray").checked = settings.startMinimizedToTray;
     field("standGoalMinutes").value = String(settings.standGoalMinutes);
     field<HTMLSelectElement>("language").value = settings.language;
@@ -848,6 +860,7 @@ settingsForm.addEventListener("submit", async (event) => {
     fullscreenRemindersEnabled: field<HTMLInputElement>("fullscreenRemindersEnabled").checked,
     alertSoundEnabled: field<HTMLInputElement>("alertSoundEnabled").checked,
     healthFactsEnabled: field<HTMLInputElement>("healthFactsEnabled").checked,
+    dailyQuoteEnabled: field<HTMLInputElement>("dailyQuoteEnabled").checked,
     startMinimizedToTray: field<HTMLInputElement>("startMinimizedToTray").checked,
     language: field<HTMLSelectElement>("language").value as Language,
     standGoalMinutes: Number(field("standGoalMinutes").value),

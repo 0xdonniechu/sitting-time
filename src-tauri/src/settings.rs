@@ -32,6 +32,7 @@ pub struct GeneralSettings {
     pub fullscreen_reminders_enabled: bool,
     pub alert_sound_enabled: bool,
     pub health_facts_enabled: bool,
+    pub daily_quote_enabled: bool,
     pub start_minimized_to_tray: bool,
     pub language: AppLanguage,
     #[serde(default = "default_stand_goal_minutes")]
@@ -51,6 +52,7 @@ impl Default for GeneralSettings {
             fullscreen_reminders_enabled: true,
             alert_sound_enabled: true,
             health_facts_enabled: true,
+            daily_quote_enabled: false,
             start_minimized_to_tray: false,
             language: AppLanguage::English,
             stand_goal_minutes: default_stand_goal_minutes(),
@@ -73,6 +75,7 @@ pub struct SettingsPayload {
     pub fullscreen_reminders_enabled: bool,
     pub alert_sound_enabled: bool,
     pub health_facts_enabled: bool,
+    pub daily_quote_enabled: bool,
     pub start_minimized_to_tray: bool,
     #[serde(default)]
     pub language: AppLanguage,
@@ -137,6 +140,7 @@ impl SettingsPayload {
             fullscreen_reminders_enabled: self.fullscreen_reminders_enabled,
             alert_sound_enabled: self.alert_sound_enabled,
             health_facts_enabled: self.health_facts_enabled,
+            daily_quote_enabled: self.daily_quote_enabled,
             start_minimized_to_tray: self.start_minimized_to_tray,
             language: self.language,
             stand_goal_minutes: self.stand_goal_minutes,
@@ -159,6 +163,7 @@ pub fn payload(timer: &TimerEngine, general: &GeneralSettings) -> SettingsPayloa
         fullscreen_reminders_enabled: general.fullscreen_reminders_enabled,
         alert_sound_enabled: general.alert_sound_enabled,
         health_facts_enabled: general.health_facts_enabled,
+        daily_quote_enabled: general.daily_quote_enabled,
         start_minimized_to_tray: general.start_minimized_to_tray,
         language: general.language,
         stand_goal_minutes: general.stand_goal_minutes,
@@ -305,6 +310,33 @@ mod tests {
         assert!(restored.general.health_facts_enabled);
         assert!(!restored.general.alert_sound_enabled);
         assert!(restored.general.start_minimized_to_tray);
+        assert!(!path.with_extension("json.corrupt").exists());
+        let _ = fs::remove_dir_all(path.parent().unwrap());
+    }
+
+    #[test]
+    fn state_saved_before_daily_quote_loads_with_it_off() {
+        let path = temp_state_path("pre-quote");
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        let general = GeneralSettings {
+            alert_sound_enabled: false,
+            ..GeneralSettings::default()
+        };
+        save(
+            &path,
+            &TimerEngine::default(),
+            &general,
+            &StatsStore::default(),
+        )
+        .unwrap();
+        let contents = fs::read_to_string(&path)
+            .unwrap()
+            .replace("\"dailyQuoteEnabled\": false,", "");
+        assert!(!contents.contains("dailyQuoteEnabled"));
+        fs::write(&path, contents).unwrap();
+        let restored = load(&path);
+        assert!(!restored.general.daily_quote_enabled);
+        assert!(!restored.general.alert_sound_enabled);
         assert!(!path.with_extension("json.corrupt").exists());
         let _ = fs::remove_dir_all(path.parent().unwrap());
     }
