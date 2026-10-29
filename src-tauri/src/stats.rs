@@ -9,7 +9,7 @@
 //! catch-up behaviour is untouched.
 
 use crate::lunar::{civil_from_days, utc7_day_count};
-use crate::timer::{SessionKind, TimerStatus};
+use crate::timer::{Posture, SessionKind, TimerStatus};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
@@ -25,15 +25,18 @@ pub enum Phase {
 
 /// Maps the engine state to an attribution bucket. An idle engine tracks
 /// nothing: attributing rest while the timer was never started would inflate
-/// every day with phantom hours.
-pub fn phase_for(status: TimerStatus, session: SessionKind) -> Option<Phase> {
+/// every day with phantom hours. Work sessions follow the posture; breaks
+/// always count as rest, like macOS.
+pub fn phase_for(status: TimerStatus, session: SessionKind, posture: Posture) -> Option<Phase> {
     match status {
         TimerStatus::Idle => None,
         TimerStatus::Paused => Some(Phase::Paused),
         TimerStatus::Running => Some(match session {
-            SessionKind::Focus | SessionKind::Sitting => Phase::Sitting,
-            SessionKind::Move => Phase::Standing,
-            SessionKind::ShortBreak | SessionKind::LongBreak => Phase::Paused,
+            SessionKind::Focus | SessionKind::Sitting => match posture {
+                Posture::Sitting => Phase::Sitting,
+                Posture::Standing => Phase::Standing,
+            },
+            SessionKind::Move | SessionKind::ShortBreak | SessionKind::LongBreak => Phase::Paused,
         }),
     }
 }
@@ -478,31 +481,55 @@ mod tests {
 
     #[test]
     fn idle_tracks_nothing() {
-        assert_eq!(phase_for(TimerStatus::Idle, SessionKind::Focus), None);
+        use crate::timer::Posture;
         assert_eq!(
-            phase_for(TimerStatus::Running, SessionKind::Focus),
+            phase_for(TimerStatus::Idle, SessionKind::Focus, Posture::Sitting),
+            None
+        );
+        assert_eq!(
+            phase_for(TimerStatus::Idle, SessionKind::Move, Posture::Standing),
+            None
+        );
+        assert_eq!(
+            phase_for(TimerStatus::Paused, SessionKind::Focus, Posture::Standing),
+            Some(Phase::Paused)
+        );
+    }
+
+    #[test]
+    fn work_follows_posture_and_breaks_are_rest() {
+        use crate::timer::Posture;
+        assert_eq!(
+            phase_for(TimerStatus::Running, SessionKind::Focus, Posture::Sitting),
             Some(Phase::Sitting)
         );
         assert_eq!(
-            phase_for(TimerStatus::Running, SessionKind::Sitting),
-            Some(Phase::Sitting)
-        );
-        assert_eq!(
-            phase_for(TimerStatus::Running, SessionKind::Move),
+            phase_for(TimerStatus::Running, SessionKind::Focus, Posture::Standing),
             Some(Phase::Standing)
         );
         assert_eq!(
-            phase_for(TimerStatus::Running, SessionKind::ShortBreak),
-            Some(Phase::Paused)
+            phase_for(TimerStatus::Running, SessionKind::Sitting, Posture::Sitting),
+            Some(Phase::Sitting)
         );
         assert_eq!(
-            phase_for(TimerStatus::Running, SessionKind::LongBreak),
-            Some(Phase::Paused)
+            phase_for(TimerStatus::Running, SessionKind::Sitting, Posture::Standing),
+            Some(Phase::Standing)
         );
-        assert_eq!(
-            phase_for(TimerStatus::Paused, SessionKind::Focus),
-            Some(Phase::Paused)
-        );
+        // Breaks always count as rest, never as standing: standing means
+        // working upright at the desk (macOS parity).
+        for session in [
+            SessionKind::Move,
+            SessionKind::ShortBreak,
+            SessionKind::LongBreak,
+        ] {
+            for posture in [Posture::Sitting, Posture::Standing] {
+                assert_eq!(
+                    phase_for(TimerStatus::Running, session, posture),
+                    Some(Phase::Paused),
+                    "{session:?} with {posture:?} must be rest"
+                );
+            }
+        }
     }
 
     #[test]

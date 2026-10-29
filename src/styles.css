@@ -45,7 +45,7 @@ button { font: inherit; -webkit-tap-highlight-color: transparent; }
   width: min(100%, 430px);
   height: 100vh;
   min-height: 460px;
-  padding: 29px 30px 22px;
+  padding: 20px 30px 14px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
@@ -85,8 +85,13 @@ button { font: inherit; -webkit-tap-highlight-color: transparent; }
 .week-month { color: #1d1d1f; font-size: 12.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
 /* A hairline separates the solar day from the lunar date. */
 .calendar-lunar { min-width: 26px; margin: 3px 0 4px; padding-top: 2px; border-top: 1px solid rgb(198 40 40 / 22%); text-align: center; color: #6e6e73; font-size: 9.5px; font-weight: 500; line-height: 1; font-variant-numeric: tabular-nums; }
+/* Zodiac art from the macOS set, right of the tile: same height as the
+   calendar (~47px), centered with it and the week label on one row. */
+.zodiac-icon { height: 47px; width: auto; }
 .eyebrow { margin: 0 0 7px; color: var(--strong); font-size: 10px; font-weight: 700; letter-spacing: .115em; }
 h1 { margin: 0; font-size: 21px; line-height: 1.2; font-weight: 620; letter-spacing: -.025em; }
+/* "after 45 minutes" beside the mode title: small, regular, secondary. */
+.mode-after { font-size: 12px; font-weight: 400; letter-spacing: 0; color: #6e6e73; }
 
 .icon-button {
   width: 32px;
@@ -105,10 +110,10 @@ h1 { margin: 0; font-size: 21px; line-height: 1.2; font-weight: 620; letter-spac
 .icon-button:hover svg { transform: rotate(45deg); }
 .icon-button:active { transform: scale(.97); }
 
-.timer-panel { text-align: center; padding: 48px 0 30px; }
+.timer-panel { text-align: center; padding: 14px 0 10px; }
 .timer {
   font-variant-numeric: tabular-nums;
-  font-size: 70px;
+  font-size: 56px;
   line-height: 1;
   letter-spacing: -.06em;
   font-weight: 650;
@@ -121,7 +126,7 @@ h1 { margin: 0; font-size: 21px; line-height: 1.2; font-weight: 620; letter-spac
 .progress {
   width: 72%;
   height: 6px;
-  margin: 22px auto 0;
+  margin: 16px auto 0;
   border-radius: 999px;
   overflow: hidden;
   background: color-mix(in srgb, var(--bright) 16%, #e5e5ea);
@@ -136,8 +141,8 @@ h1 { margin: 0; font-size: 21px; line-height: 1.2; font-weight: 620; letter-spac
 }
 .session-label {
   display: inline-block;
-  margin-top: 18px;
-  padding: 4px 12px;
+  margin-top: 12px;
+  padding: 3px 12px;
   border-radius: 999px;
   color: var(--strong);
   background: color-mix(in srgb, var(--bright) 15%, transparent);
@@ -145,13 +150,45 @@ h1 { margin: 0; font-size: 21px; line-height: 1.2; font-weight: 620; letter-spac
   font-weight: 650;
   letter-spacing: -.01em;
 }
-.status { margin-top: 8px; color: #6e6e73; font-size: 12px; }
-.cycle { margin-top: 8px; color: #8e8e93; font-size: 11px; }
+.status { margin-top: 6px; color: #6e6e73; font-size: 12px; }
+.cycle { margin-top: 6px; color: #8e8e93; font-size: 11px; }
 
-.controls { display: flex; gap: 10px; }
+/* Sit/Stand posture picker, like the macOS segmented control above
+   Pause/Skip: desk pictogram plus label per side. */
+.posture-selector {
+  display: flex;
+  gap: 3px;
+  margin-top: 10px;
+  padding: 3px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--bright) 10%, #e8e8ed);
+}
+.posture-button {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 8px;
+  padding: 6px;
+  color: #6e6e73;
+  background: transparent;
+  cursor: pointer;
+  font-size: 12px;
+}
+.posture-button svg { height: 20px; width: auto; }
+.posture-button.active {
+  color: var(--strong);
+  background: #fff;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 10%);
+  font-weight: 650;
+}
+
+.controls { display: flex; gap: 10px; margin-top: 8px; }
 .controls button {
   flex: 1;
-  height: 42px;
+  height: 38px;
   border-radius: 10px;
   cursor: pointer;
   font-weight: 650;
@@ -171,7 +208,7 @@ h1 { margin: 0; font-size: 21px; line-height: 1.2; font-weight: 620; letter-spac
 .mode-selector {
   display: flex;
   gap: 3px;
-  margin-top: 22px;
+  margin-top: 8px;
   padding: 3px;
   border-radius: 10px;
   background: color-mix(in srgb, var(--bright) 10%, #e8e8ed);
@@ -180,7 +217,7 @@ h1 { margin: 0; font-size: 21px; line-height: 1.2; font-weight: 620; letter-spac
   flex: 1;
   border: 0;
   border-radius: 8px;
-  padding: 8px;
+  padding: 7px;
   color: #6e6e73;
   background: transparent;
   cursor: pointer;
@@ -193,15 +230,18 @@ h1 { margin: 0; font-size: 21px; line-height: 1.2; font-weight: 620; letter-spac
   font-weight: 650;
 }
 
-.tray-hint { margin: auto 0 0; padding-top: 20px; color: #8e8e93; text-align: center; font-size: 11px; line-height: 1.4; }
+.tray-hint { margin: auto 0 0; padding-top: 6px; color: #8e8e93; text-align: center; font-size: 11px; line-height: 1.4; }
 
 button:focus-visible { outline: 3px solid color-mix(in srgb, var(--bright) 45%, transparent); outline-offset: 2px; }
 
 @media (prefers-color-scheme: dark) {
   .icon-button { color: #e5e5ea; }
+  .mode-after { color: #a1a1a6; }
   .calendar { background: #2c2c2e; box-shadow: 0 0 0 1px #4a3436, 0 2px 6px -2px rgb(0 0 0 / 40%); }
   .calendar-day { color: #ff6b6b; }
   .calendar-lunar { color: #a1a1a6; border-top-color: rgb(255 107 107 / 28%); }
+  /* The zodiac masks are black line art: invert to white on dark. */
+  .zodiac-icon { filter: invert(1); }
   .week-number { color: #d1d1d6; }
   .week-month { color: #f5f5f7; }
   .progress { background: color-mix(in srgb, var(--bright) 18%, #2c2c2e); }
@@ -211,6 +251,9 @@ button:focus-visible { outline: 3px solid color-mix(in srgb, var(--bright) 45%, 
   .mode-selector { background: color-mix(in srgb, var(--bright) 10%, #2c2c2e); }
   .mode-button { color: #98989d; }
   .mode-button.active { background: #3a3a3c; box-shadow: 0 1px 3px rgb(0 0 0 / 30%); }
+  .posture-selector { background: color-mix(in srgb, var(--bright) 10%, #2c2c2e); }
+  .posture-button { color: #98989d; }
+  .posture-button.active { background: #3a3a3c; box-shadow: 0 1px 3px rgb(0 0 0 / 30%); }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -262,24 +305,25 @@ button:focus-visible { outline: 3px solid color-mix(in srgb, var(--bright) 45%, 
 }
 
 /* Dash today section: compact totals under the mode selector. */
-.today-section { margin-top: 18px; padding: 12px 14px 10px; border-radius: 10px; background: rgb(255 255 255 / 70%); border: 1px solid #e5e5ea; }
-.today-section h2 { margin: 0 0 8px; font-size: 10px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: var(--strong); }
-.today-rows { display: flex; flex-direction: column; gap: 5px; }
+.today-section { margin-top: 8px; padding: 10px 14px 8px; border-radius: 10px; background: rgb(255 255 255 / 70%); border: 1px solid #e5e5ea; }
+.today-section h2 { margin: 0 0 6px; font-size: 10px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: var(--strong); }
+.today-rows { display: flex; flex-direction: column; gap: 4px; }
 .today-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #3a3a3c; }
 .today-row b { margin-left: auto; font-weight: 650; font-variant-numeric: tabular-nums; }
 .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
 .dot-sit { background: #e8830c; }
 .dot-stand { background: #2da44e; }
 .dot-rest { background: #9aa0a6; }
-.breaks-line { margin: 8px 0 0; color: #8e8e93; font-size: 11px; }
-.goal-progress { margin-top: 10px; }
-.goal-bar { height: 6px; border-radius: 999px; overflow: hidden; background: color-mix(in srgb, var(--bright) 16%, #e5e5ea); }
+.breaks-line { margin: 6px 0 0; color: #8e8e93; font-size: 11px; }
+/* Goal on one row: bar plus label side by side, so the dash fits 640px. */
+.goal-progress { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.goal-bar { flex: 1; height: 6px; border-radius: 999px; overflow: hidden; background: color-mix(in srgb, var(--bright) 16%, #e5e5ea); }
 .goal-bar span { display: block; height: 100%; background: linear-gradient(90deg, var(--bright), var(--bright-2)); }
-.goal-progress p { margin: 5px 0 0; color: #6e6e73; font-size: 11px; }
+.goal-progress p { margin: 0; color: #6e6e73; font-size: 11px; white-space: nowrap; }
 
 /* Icon footer: stats/settings/about buttons plus the donate pill. */
-.icon-footer { display: flex; align-items: center; gap: 4px; margin-top: 14px; }
-.footer-button { width: 32px; height: 32px; display: grid; place-items: center; border: 0; border-radius: 9px; padding: 7px; color: #6e6e73; background: transparent; cursor: pointer; }
+.icon-footer { display: flex; align-items: center; gap: 4px; margin-top: 8px; }
+.footer-button { width: 30px; height: 30px; display: grid; place-items: center; border: 0; border-radius: 9px; padding: 7px; color: #6e6e73; background: transparent; cursor: pointer; }
 .footer-button svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
 .footer-button:hover { color: var(--strong); background: color-mix(in srgb, var(--bright) 14%, transparent); }
 .footer-spacer { flex: 1; }
@@ -329,8 +373,6 @@ button:focus-visible { outline: 3px solid color-mix(in srgb, var(--bright) 45%, 
 .about-star { margin: 0 0 14px; color: #6e6e73; font-size: 13px; line-height: 1.5; }
 .text-link { border: 0; background: none; padding: 0; color: var(--strong); font: inherit; font-weight: 650; cursor: pointer; }
 .text-link:hover { text-decoration: underline; }
-
-.calendar-zodiac { font-size: 11px; line-height: 1; margin: 1px 0 4px; }
 
 /* First-run welcome: the landing-page meme, shown once per install. */
 .welcome-body { display: flex; flex-direction: column; gap: 12px; padding-top: 6px; }

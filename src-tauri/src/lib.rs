@@ -21,7 +21,7 @@ use tauri::{
     AppHandle, Emitter, Manager, WindowEvent,
 };
 use tauri_plugin_notification::NotificationExt;
-use timer::{epoch_ms, SessionKind, TimerEngine, TimerMode, TimerSnapshot};
+use timer::{epoch_ms, Posture, SessionKind, TimerEngine, TimerMode, TimerSnapshot};
 
 #[derive(Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -76,7 +76,7 @@ fn sync_phase(app: &AppHandle) {
         if let Ok(mut stats) = app.state::<AppState>().stats.lock() {
             stats.set_phase(
                 epoch_ms(),
-                stats::phase_for(current.status, current.session),
+                stats::phase_for(current.status, current.session, current.posture),
             );
         }
     }
@@ -101,7 +101,7 @@ fn tick_and_sync(app: &AppHandle) -> Option<TimerSnapshot> {
         // Without a gap at most one session can elapse between attributions,
         // so one break per completed work session holds exactly.
         let gapped = stats.gap_since_last(now);
-        stats.set_phase(now, stats::phase_for(snapshot.status, snapshot.session));
+        stats.set_phase(now, stats::phase_for(snapshot.status, snapshot.session, snapshot.posture));
         if transitioned && !gapped && is_work_session(prev_session) {
             stats.note_auto_break();
         }
@@ -209,6 +209,12 @@ fn reset_session(app: AppHandle) -> Result<TimerSnapshot, String> {
 #[tauri::command]
 fn select_mode(app: AppHandle, mode: TimerMode) -> Result<TimerSnapshot, String> {
     mutate_timer(&app, |engine| engine.set_mode(mode));
+    snapshot(&app).ok_or_else(|| "Timer state is unavailable".to_string())
+}
+
+#[tauri::command]
+fn set_posture(app: AppHandle, posture: Posture) -> Result<TimerSnapshot, String> {
+    mutate_timer(&app, |engine| engine.set_posture(posture));
     snapshot(&app).ok_or_else(|| "Timer state is unavailable".to_string())
 }
 
@@ -423,6 +429,7 @@ pub fn run() {
             skip_session,
             reset_session,
             select_mode,
+            set_posture,
             get_settings,
             save_settings,
             dismiss_reminder,

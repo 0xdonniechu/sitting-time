@@ -31,6 +31,17 @@ pub enum TimerStatus {
     Paused,
 }
 
+/// Sitting or standing while a work session runs. Breaks always count as
+/// rest, never as standing: standing means working upright at the desk
+/// (macOS parity).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum Posture {
+    #[default]
+    Sitting,
+    Standing,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TimerSettings {
@@ -78,6 +89,7 @@ pub struct TimerSnapshot {
     pub selected_mode: TimerMode,
     pub session: SessionKind,
     pub status: TimerStatus,
+    pub posture: Posture,
     pub remaining_seconds: u64,
     pub total_seconds: u64,
     pub completed_focus_sessions: u32,
@@ -91,6 +103,10 @@ pub struct TimerEngine {
     selected_mode: TimerMode,
     session: SessionKind,
     status: TimerStatus,
+    /// Live body state, never persisted: a restart always comes back
+    /// sitting, like macOS.
+    #[serde(skip)]
+    posture: Posture,
     remaining_ms: u64,
     deadline_epoch_ms: Option<u64>,
     completed_focus_sessions: u32,
@@ -105,6 +121,7 @@ impl Default for TimerEngine {
             selected_mode: TimerMode::Pomodoro,
             session: SessionKind::Focus,
             status: TimerStatus::Idle,
+            posture: Posture::Sitting,
             remaining_ms,
             deadline_epoch_ms: None,
             completed_focus_sessions: 0,
@@ -142,6 +159,7 @@ impl TimerEngine {
             selected_mode: self.selected_mode,
             session: self.session,
             status: self.status,
+            posture: self.posture,
             remaining_seconds: remaining_ms.div_ceil(1_000),
             total_seconds: self.session_duration_seconds(),
             completed_focus_sessions: self.completed_focus_sessions,
@@ -175,6 +193,11 @@ impl TimerEngine {
     pub fn skip(&mut self) {
         let continue_running = self.status == TimerStatus::Running;
         self.advance_session(epoch_ms(), continue_running);
+    }
+
+    /// Switches sitting/standing attribution. The session clock keeps running.
+    pub fn set_posture(&mut self, posture: Posture) {
+        self.posture = posture;
     }
 
     pub fn reset_current_session(&mut self) {
@@ -323,6 +346,28 @@ mod tests {
         assert_eq!(snapshot.session, SessionKind::Focus);
         assert_eq!(snapshot.remaining_seconds, 25 * 60);
         assert_eq!(snapshot.status, TimerStatus::Idle);
+    }
+
+    #[test]
+    fn posture_defaults_to_sitting_and_switches() {
+        let mut engine = TimerEngine::default();
+        assert_eq!(engine.snapshot().posture, Posture::Sitting);
+        engine.set_posture(Posture::Standing);
+        assert_eq!(engine.snapshot().posture, Posture::Standing);
+        engine.set_posture(Posture::Sitting);
+        assert_eq!(engine.snapshot().posture, Posture::Sitting);
+    }
+
+    #[test]
+    fn posture_resets_to_sitting_on_load() {
+        // Posture is the body's live state, not persisted: like macOS, a
+        // restart always comes back sitting.
+        let mut engine = TimerEngine::default();
+        engine.set_posture(Posture::Standing);
+        let json = serde_json::to_string(&engine).unwrap();
+        assert!(!json.contains("posture"));
+        let restored: TimerEngine = serde_json::from_str(&json).unwrap();
+        assert_eq!(restored.snapshot().posture, Posture::Sitting);
     }
 
     fn running_engine(mode: TimerMode) -> TimerEngine {

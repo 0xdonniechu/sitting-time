@@ -5,17 +5,19 @@ import { disable, enable, isEnabled } from "@tauri-apps/plugin-autostart";
 import { isPermissionGranted, requestPermission } from "@tauri-apps/plugin-notification";
 import "@fontsource-variable/inter";
 import "./styles.css";
-import { formatDuration, t, ZODIAC_EMOJI, type Language } from "./strings";
+import { formatDuration, t, type Language } from "./strings";
 
 type TimerMode = "pomodoro" | "standUp";
 type SessionKind = "focus" | "shortBreak" | "longBreak" | "sitting" | "move";
 type TimerStatus = "idle" | "running" | "paused";
+type Posture = "sitting" | "standing";
 type ViewName = "dash" | "settings" | "stats" | "about" | "welcome";
 
 interface TimerSnapshot {
   selectedMode: TimerMode;
   session: SessionKind;
   status: TimerStatus;
+  posture: Posture;
   remainingSeconds: number;
   totalSeconds: number;
   completedFocusSessions: number;
@@ -94,6 +96,12 @@ const GEAR_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12.22 2h
 const CHART_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M7 13v4"/><path d="M12 9v8"/><path d="M17 5v12"/></svg>`;
 const INFO_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>`;
 
+// Desk-work pictograms ported from the macOS DeskPictogram (100x78 canvas,
+// same primitives, y-flipped for SVG): a person at a desk with a monitor
+// arm, seated on an office chair or standing at a raised desk.
+const SIT_SVG = `<svg viewBox="0 0 100 78" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round"><line x1="24" y1="26" x2="30" y2="44" stroke-width="13"/><line x1="28" y1="30" x2="53" y2="39.5" stroke-width="7.5"/><line x1="30" y1="46" x2="48" y2="46" stroke-width="10"/><line x1="48" y1="46" x2="48" y2="67" stroke-width="9"/><line x1="44" y1="71" x2="54" y2="71" stroke-width="5"/><line x1="9" y1="51" x2="12" y2="32" stroke-width="7"/><line x1="21" y1="52" x2="21" y2="64" stroke-width="4"/><line x1="21" y1="64" x2="9" y2="72" stroke-width="3"/><line x1="21" y1="64" x2="21" y2="73" stroke-width="3"/><line x1="21" y1="64" x2="33" y2="72" stroke-width="3"/><line x1="84" y1="44" x2="84" y2="32" stroke-width="3"/><line x1="84" y1="32" x2="74" y2="24" stroke-width="3"/></g><g fill="currentColor"><circle cx="23" cy="17" r="8.5"/><circle cx="9" cy="73" r="2.5"/><circle cx="21" cy="74" r="2.5"/><circle cx="33" cy="73" r="2.5"/><circle cx="84" cy="32" r="2.6"/><circle cx="74" cy="24" r="2.4"/><rect x="8" y="47" width="26" height="5" rx="2"/><rect x="53" y="44" width="36" height="4" rx="1.5"/><rect x="67" y="48" width="5" height="24" rx="1"/><rect x="55" y="71.5" width="32" height="3.5" rx="1.5"/><rect x="68" y="14" width="6" height="14" rx="1.5"/></g></svg>`;
+const STAND_SVG = `<svg viewBox="0 0 100 78" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round"><line x1="25" y1="27" x2="27" y2="45" stroke-width="13"/><line x1="28" y1="31" x2="53" y2="33.5" stroke-width="8"/><line x1="25" y1="45" x2="20" y2="69" stroke-width="9"/><line x1="29" y1="45" x2="34" y2="69" stroke-width="9"/><line x1="14" y1="72" x2="26" y2="72" stroke-width="5"/><line x1="28" y1="72" x2="40" y2="72" stroke-width="5"/><line x1="84" y1="34" x2="84" y2="22" stroke-width="3"/><line x1="84" y1="22" x2="74" y2="14" stroke-width="3"/></g><g fill="currentColor"><circle cx="24" cy="14" r="8.5"/><circle cx="84" cy="22" r="2.6"/><circle cx="74" cy="14" r="2.4"/><rect x="53" y="34" width="36" height="4" rx="1.5"/><rect x="67" y="38" width="5" height="34" rx="1"/><rect x="55" y="71.5" width="32" height="3.5" rx="1.5"/><rect x="68" y="4" width="6" height="14" rx="1.5"/></g></svg>`;
+
 const app = document.querySelector<HTMLDivElement>("#app");
 if (!app) throw new Error("App root was not found");
 
@@ -102,7 +110,7 @@ app.innerHTML = `
     <header class="topbar">
       <div>
         <p class="eyebrow">SITTINGTIME</p>
-        <h1 id="mode-title">Pomodoro</h1>
+        <h1><span id="mode-title">Pomodoro</span> <small class="mode-after" id="mode-after"></small></h1>
       </div>
       <div class="topbar-side">
         <div class="week-label" id="week-label" aria-hidden="true">
@@ -113,8 +121,8 @@ app.innerHTML = `
           <span class="calendar-head" aria-hidden="true"></span>
           <span class="calendar-day" id="today-solar" aria-hidden="true"></span>
           <span class="calendar-lunar" id="today-lunar" aria-hidden="true"></span>
-          <span class="calendar-zodiac" id="today-zodiac" aria-hidden="true"></span>
         </div>
+        <img class="zodiac-icon" id="zodiac-icon" alt="" aria-hidden="true">
       </div>
     </header>
 
@@ -124,6 +132,11 @@ app.innerHTML = `
       <div class="session-label" id="session-label">Focus</div>
       <div class="status" id="status">Ready</div>
       <div class="cycle" id="cycle">Session 1 of 4</div>
+    </div>
+
+    <div class="posture-selector" role="group" aria-label="Posture">
+      <button class="posture-button active" data-posture="sitting" aria-pressed="true">${SIT_SVG}<span data-i18n="postureSit">Sit</span></button>
+      <button class="posture-button" data-posture="standing" aria-pressed="false">${STAND_SVG}<span data-i18n="postureStand">Stand</span></button>
     </div>
 
     <div class="controls">
@@ -284,6 +297,7 @@ function showView(name: ViewName): void {
 }
 
 const modeTitle = document.querySelector<HTMLElement>("#mode-title")!;
+const modeAfter = document.querySelector<HTMLElement>("#mode-after")!;
 const timerEl = document.querySelector<HTMLElement>("#timer")!;
 const progressFill = document.querySelector<HTMLElement>("#progress-fill")!;
 const sessionLabel = document.querySelector<HTMLElement>("#session-label")!;
@@ -296,7 +310,10 @@ const settingsMessage = document.querySelector<HTMLElement>("#settings-message")
 const today = document.querySelector<HTMLElement>("#today")!;
 const todaySolar = document.querySelector<HTMLElement>("#today-solar")!;
 const todayLunar = document.querySelector<HTMLElement>("#today-lunar")!;
-const todayZodiac = document.querySelector<HTMLElement>("#today-zodiac")!;
+const zodiacIcon = document.querySelector<HTMLImageElement>("#zodiac-icon")!;
+// The macOS art set has no fallback glyph: a missing file hides the icon
+// instead of showing a broken image (macOS shows text only in that case).
+zodiacIcon.addEventListener("error", () => zodiacIcon.classList.add("hidden"));
 const weekLabel = document.querySelector<HTMLElement>("#week-label")!;
 const weekNumber = document.querySelector<HTMLElement>("#week-number")!;
 const weekMonth = document.querySelector<HTMLElement>("#week-month")!;
@@ -346,9 +363,11 @@ function renderCalendar(day: CalendarDay): void {
   weekMonth.textContent = monthAbbreviations[day.solarMonth - 1];
   todaySolar.textContent = String(day.solarDay);
   todayLunar.textContent = `${day.lunarDay}/${day.lunarMonth}${day.lunarLeap ? "N" : ""}`;
-  todayZodiac.textContent = ZODIAC_EMOJI[day.zodiacAnimal] ?? "";
+  zodiacIcon.classList.remove("hidden");
+  zodiacIcon.src = `./zodiac/${day.zodiacAnimal}.png`;
   today.title = full;
   weekLabel.title = full;
+  zodiacIcon.title = full;
   today.setAttribute("aria-label", full);
 }
 
@@ -367,6 +386,15 @@ function standUpCycleText(): string {
   const sitting = currentSettings?.sittingMinutes ?? 45;
   const movement = currentSettings?.movementMinutes ?? 5;
   return t(lang, "standUpCycle", { sitting, movement });
+}
+
+/// "after 45 minutes" beside the mode title: the work-session length of the
+/// active mode, following the settings. formatDuration handles plurals.
+function modeAfterText(isPomodoro: boolean): string {
+  const minutes = isPomodoro
+    ? (currentSettings?.focusMinutes ?? 25)
+    : (currentSettings?.sittingMinutes ?? 45);
+  return t(lang, "modeAfter", { duration: formatDuration(minutes * 60, lang) });
 }
 
 function formatTime(seconds: number): string {
@@ -414,6 +442,7 @@ function render(state: TimerSnapshot): void {
   document.body.dataset.session = state.session;
   progressFill.style.width = `${Math.min(100, Math.max(0, done * 100))}%`;
   modeTitle.textContent = isPomodoro ? t(lang, "modePomodoro") : t(lang, "modeStandUp");
+  modeAfter.textContent = modeAfterText(isPomodoro);
   timerEl.textContent = formatTime(state.remainingSeconds);
   sessionLabel.textContent = t(lang, sessionKeys[state.session]);
   statusEl.textContent =
@@ -435,6 +464,11 @@ function render(state: TimerSnapshot): void {
 
   document.querySelectorAll<HTMLButtonElement>(".mode-button[data-mode]").forEach((button) => {
     button.classList.toggle("active", button.dataset.mode === state.selectedMode);
+  });
+  document.querySelectorAll<HTMLButtonElement>(".posture-button[data-posture]").forEach((button) => {
+    const active = button.dataset.posture === state.posture;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-pressed", active ? "true" : "false");
   });
   renderToday();
 }
@@ -706,6 +740,12 @@ skipButton.addEventListener("click", () => void runCommand("skip_session"));
 document.querySelectorAll<HTMLButtonElement>(".mode-button[data-mode]").forEach((button) => {
   button.addEventListener("click", () => {
     void runCommand("select_mode", { mode: button.dataset.mode });
+  });
+});
+
+document.querySelectorAll<HTMLButtonElement>(".posture-button[data-posture]").forEach((button) => {
+  button.addEventListener("click", () => {
+    void runCommand("set_posture", { posture: button.dataset.posture });
   });
 });
 

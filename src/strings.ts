@@ -10,6 +10,9 @@ const en: Table = {
   appName: "SittingTime",
   modePomodoro: "Pomodoro",
   modeStandUp: "Stand Up",
+  modeAfter: "after {duration}",
+  postureSit: "Sit",
+  postureStand: "Stand",
   start: "Start",
   pause: "Pause",
   resume: "Resume",
@@ -102,6 +105,9 @@ const vi: Table = {
   appName: "SittingTime",
   modePomodoro: "Pomodoro",
   modeStandUp: "Stand Up",
+  modeAfter: "sau {duration}",
+  postureSit: "Ngồi",
+  postureStand: "Đứng",
   start: "Bắt đầu",
   pause: "Tạm nghỉ",
   resume: "Tiếp tục",
@@ -218,19 +224,3 @@ export function formatDuration(seconds: number, lang: Language): string {
   return unit(lang, total, "unitSecondOne", "unitSecondOther");
 }
 
-/// Zodiac animal glyph for the calendar tile, keyed by the Rust
-/// `ZodiacAnimal` serial names.
-export const ZODIAC_EMOJI: Record<string, string> = {
-  rat: "🐀",
-  ox: "🐂",
-  tiger: "🐅",
-  rabbit: "🐇",
-  dragon: "🐉",
-  snake: "🐍",
-  horse: "🐎",
-  goat: "🐐",
-  monkey: "🐒",
-  rooster: "🐔",
-  dog: "🐕",
-  pig: "🐖",
-};
